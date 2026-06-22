@@ -6,6 +6,49 @@ import type { OpenClawConfig } from "../config/types.openclaw.js";
 
 type MediaUnderstandingKind = "audio.transcription" | "video.description" | "image.description";
 
+/** Canonical speaker segment shared with PLUR1BUS and media-understanding-common. */
+export type SpeakerSegmentAttributionSource =
+  | "discord_user_stream"
+  | "asr_diarize"
+  | "sortformer"
+  | "manual"
+  | "enrollment"
+  | "unknown";
+
+/** Audio source family for a speaker segment. */
+export type SpeakerSegmentSource =
+  | "discord_voice"
+  | "telegram_voice"
+  | "youtube"
+  | "upload"
+  | "podcast"
+  | "meeting"
+  | "unknown";
+
+/** One word-level timestamp inside a speaker segment. */
+export type SpeakerSegmentWord = {
+  startMs: number;
+  endMs: number;
+  word: string;
+  confidence?: number;
+};
+
+/** Canonical speaker segment: who spoke when, and how we know. */
+export type SpeakerSegment = {
+  source: SpeakerSegmentSource;
+  sourceId: string | null;
+  speakerLabel: string;
+  speakerDisplayName: string | null;
+  speakerConfidence: number | null;
+  startMs: number;
+  endMs: number;
+  text: string;
+  words: SpeakerSegmentWord[] | null;
+  attributionSource: SpeakerSegmentAttributionSource;
+  diarizationModel: string | null;
+  asrModel: string | null;
+};
+
 export type MediaUnderstandingCapability = "image" | "audio" | "video";
 
 export type MediaUnderstandingCapabilityRegistry = Map<
@@ -29,6 +72,8 @@ export type MediaUnderstandingOutput = {
   text: string;
   provider: string;
   model?: string;
+  /** Optional speaker-attributed segments; additive to preserve plain-text fallback. */
+  segments?: SpeakerSegment[];
 };
 
 type MediaUnderstandingDecisionOutcome =
@@ -111,6 +156,8 @@ export type AudioTranscriptionRequest = {
 export type AudioTranscriptionResult = {
   text: string;
   model?: string;
+  /** Optional speaker-attributed segments; additive and safe to ignore. */
+  segments?: SpeakerSegment[];
 };
 
 export type VideoDescriptionRequest = {

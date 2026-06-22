@@ -1,5 +1,5 @@
 // Media Understanding Common helper module supports format behavior.
-import type { MediaUnderstandingOutput } from "./types.js";
+import type { MediaUnderstandingOutput, SpeakerSegment } from "./types.js";
 
 const MEDIA_PLACEHOLDER_RE = /^<media:[^>]+>(\s*\([^)]*\))?$/i;
 const MEDIA_PLACEHOLDER_TOKEN_RE = /^<media:[^>]+>(\s*\([^)]*\))?\s*/i;
@@ -29,6 +29,19 @@ function formatSection(
   }
   lines.push(`${kind}:\n${text}`);
   return lines.join("\n");
+}
+
+/** Renders speaker-attributed segments as plain text without assuming identities. */
+function formatSpeakerSegments(segments: SpeakerSegment[]): string {
+  return segments.map((segment) => `[${segment.speakerLabel}]: ${segment.text}`).join("\n");
+}
+
+/** Returns the best plain-text representation of an audio output. */
+function formatAudioTranscriptText(output: MediaUnderstandingOutput): string {
+  if (output.segments && output.segments.length > 0) {
+    return formatSpeakerSegments(output.segments);
+  }
+  return output.text;
 }
 
 /** Formats media-understanding outputs into the chat body sent back to the model. */
@@ -63,7 +76,7 @@ export function formatMediaUnderstandingBody(params: {
         formatSection(
           `Audio${suffix}`,
           "Transcript",
-          output.text,
+          formatAudioTranscriptText(output),
           outputs.length === 1 ? userText : undefined,
         ),
       );
@@ -96,7 +109,9 @@ export function formatMediaUnderstandingBody(params: {
 /** Formats one or more audio transcript outputs for legacy transcript-only callers. */
 export function formatAudioTranscripts(outputs: MediaUnderstandingOutput[]): string {
   if (outputs.length === 1) {
-    return outputs[0].text;
+    return formatAudioTranscriptText(outputs[0]);
   }
-  return outputs.map((output, index) => `Audio ${index + 1}:\n${output.text}`).join("\n\n");
+  return outputs
+    .map((output, index) => `Audio ${index + 1}:\n${formatAudioTranscriptText(output)}`)
+    .join("\n\n");
 }

@@ -114,4 +114,63 @@ describe("formatMediaUnderstandingBody", () => {
       ].join("\n\n"),
     );
   });
+
+  it("renders speaker-attributed segments when present", () => {
+    const body = formatMediaUnderstandingBody({
+      outputs: [
+        {
+          kind: "audio.transcription",
+          attachmentIndex: 0,
+          text: "ignored plain text",
+          provider: "openclaw",
+          segments: [
+            {
+              source: "discord_voice",
+              sourceId: "123",
+              speakerLabel: "discord:123",
+              speakerDisplayName: "Eva",
+              speakerConfidence: null,
+              startMs: 0,
+              endMs: 1000,
+              text: "hello",
+              words: null,
+              attributionSource: "discord_user_stream",
+              diarizationModel: null,
+              asrModel: null,
+            },
+            {
+              source: "unknown",
+              sourceId: null,
+              speakerLabel: "speaker_0",
+              speakerDisplayName: null,
+              speakerConfidence: null,
+              startMs: 1000,
+              endMs: 2000,
+              text: "world",
+              words: null,
+              attributionSource: "unknown",
+              diarizationModel: null,
+              asrModel: null,
+            },
+          ],
+        },
+      ],
+    });
+    expect(body).toBe("[Audio]\nTranscript:\n[discord:123]: hello\n[speaker_0]: world");
+  });
+
+  it("falls back to plain text when segments are empty", () => {
+    const body = formatMediaUnderstandingBody({
+      outputs: [
+        {
+          kind: "audio.transcription",
+          attachmentIndex: 0,
+          text: "plain fallback",
+          provider: "openclaw",
+          segments: [],
+        },
+      ],
+    });
+    expect(body).toBe("[Audio]\nTranscript:\nplain fallback");
+  });
 });
