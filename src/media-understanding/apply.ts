@@ -1,10 +1,17 @@
 // Applies media-understanding outputs to inbound message context, including
 // attachment normalization, provider execution, file text extraction, and echoing.
+import crypto from "node:crypto";
 import path from "node:path";
 import {
   normalizeLowercaseStringOrEmpty,
   normalizeOptionalString,
 } from "@openclaw/normalization-core/string-coerce";
+import type { ActiveMediaModel } from "../../packages/media-understanding-common/src/active-model.js";
+import {
+  extractMediaUserText,
+  formatAudioTranscripts,
+  formatMediaUnderstandingBody,
+} from "../../packages/media-understanding-common/src/format.js";
 import { finalizeInboundContext } from "../auto-reply/reply/inbound-context.js";
 import type { MsgContext } from "../auto-reply/templating.js";
 import type { OpenClawConfig } from "../config/types.js";
@@ -12,14 +19,9 @@ import { logVerbose, shouldLogVerbose } from "../globals.js";
 import { renderFileContextBlock } from "../media/file-context.js";
 import { extractFileContentFromSource, normalizeMimeType } from "../media/input-files.js";
 import { wrapExternalContent } from "../security/external-content.js";
-import type { ActiveMediaModel } from "../../packages/media-understanding-common/src/active-model.js";
-import {
-  extractMediaUserText,
-  formatAudioTranscripts,
-  formatMediaUnderstandingBody,
-} from "../../packages/media-understanding-common/src/format.js";
 import { resolveAttachmentKind } from "./attachments.js";
 import { runWithConcurrency } from "./concurrency.js";
+import { attachFallbackAndMaybeEnqueueDiarization } from "./diarization/index.js";
 import { DEFAULT_ECHO_TRANSCRIPT_FORMAT, sendTranscriptEcho } from "./echo-transcript.js";
 import {
   type FileExtractionLimits,
@@ -572,6 +574,40 @@ export async function applyMediaUnderstanding(params: {
         outputs.push(output);
       }
       decisions.push(entry.decision);
+    }
+
+    // Non-blocking batch diarization enrichment for mixed/unclear audio sources.
+    // This attaches a safe fallback segment immediately and enqueues an async job.
+    for (let i = 0; i < outputs.length; i += 1) {
+      const output = outputs[i];
+      if (output.kind !== "audio.transcription") {
+        continue;
+      }
+      try {
+        const media = await cache.getBuffer({
+          attachmentIndex: output.attachmentIndex,
+          maxBytes: Number.MAX_SAFE_INTEGER,
+          timeoutMs: 10_000,
+        });
+        outputs[i] = await attachFallbackAndMaybeEnqueueDiarization({
+          config: cfg.tools?.media?.diarization ?? { provider: "none" },
+          output,
+          buffer: media.buffer,
+          targetRef: {
+            source: "unknown",
+            sourceId: null,
+            mediaOutputId: crypto.randomUUID(),
+            transcriptId: null,
+            conversationId: null,
+            messageId: null,
+          },
+          asrText: output.text,
+        });
+      } catch (err) {
+        logVerbose(
+          `media: diarization hook skipped for attachment ${output.attachmentIndex}: ${String(err)}`,
+        );
+      }
     }
 
     const audioOutputAttachmentIndexes = new Set(

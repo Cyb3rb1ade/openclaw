@@ -26,6 +26,50 @@ export type MediaAttachment = {
   alreadyTranscribed?: boolean;
 };
 
+/** Attribution source for a speaker segment. */
+export type SpeakerSegmentAttributionSource =
+  | "discord_user_stream"
+  | "asr_diarize"
+  | "sortformer"
+  | "manual"
+  | "contextual_proposal"
+  | "enrollment"
+  | "unknown";
+
+/** Audio source family for a speaker segment. */
+export type SpeakerSegmentSource =
+  | "discord_voice"
+  | "telegram_voice"
+  | "youtube"
+  | "upload"
+  | "podcast"
+  | "meeting"
+  | "unknown";
+
+/** One word-level timestamp inside a speaker segment. */
+export type SpeakerSegmentWord = {
+  startMs: number;
+  endMs: number;
+  word: string;
+  confidence?: number;
+};
+
+/** Canonical speaker segment: who spoke when, and how we know. */
+export type SpeakerSegment = {
+  source: SpeakerSegmentSource;
+  sourceId: string | null;
+  speakerLabel: string;
+  speakerDisplayName: string | null;
+  speakerConfidence: number | null;
+  startMs: number;
+  endMs: number;
+  text: string;
+  words: SpeakerSegmentWord[] | null;
+  attributionSource: SpeakerSegmentAttributionSource;
+  diarizationModel: string | null;
+  asrModel: string | null;
+};
+
 /** Normalized text output produced by media understanding. */
 export type MediaUnderstandingOutput = {
   kind: MediaUnderstandingKind;
@@ -33,6 +77,10 @@ export type MediaUnderstandingOutput = {
   text: string;
   provider: string;
   model?: string;
+  /** Optional speaker-attributed segments; kept additive to preserve plain-text fallback. */
+  segments?: SpeakerSegment[];
+  /** Stable id for correlating this media output with later enrichment (e.g. diarization naming). */
+  mediaOutputId?: string;
 };
 
 /** Provider shape used for capability discovery and dispatch. */

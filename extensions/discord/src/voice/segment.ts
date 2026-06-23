@@ -5,6 +5,7 @@ import type { DiscordAccountConfig, OpenClawConfig } from "openclaw/plugin-sdk/c
 import type { RuntimeEnv } from "openclaw/plugin-sdk/runtime-env";
 import { createSubsystemLogger } from "openclaw/plugin-sdk/runtime-env";
 import { formatErrorMessage } from "openclaw/plugin-sdk/ssrf-runtime";
+import type { SpeakerSegment } from "openclaw/plugin-sdk/transcripts";
 import { maybeControlDiscordVoiceAgentRun } from "./agent-control.js";
 import { createDiscordOpusPlaybackStream } from "./audio.js";
 import { resolveDiscordVoiceIngressContext, runDiscordVoiceAgentTurn } from "./ingress.js";
@@ -80,6 +81,22 @@ export async function processDiscordVoiceSegment(params: {
   logVoiceVerbose(
     `transcript from ${ingress.speakerLabel} (${userId}) in guild ${entry.guildId} channel ${entry.channelId}: ${formatVoiceTranscriptLogPreview(transcript)}`,
   );
+
+  const discordSpeakerSegment: SpeakerSegment = {
+    source: "discord_voice",
+    sourceId: userId,
+    speakerLabel: `discord:${userId}`,
+    speakerDisplayName: ingress.speakerLabel,
+    speakerConfidence: null,
+    startMs: 0,
+    endMs: Math.max(0, Math.round(durationSeconds * 1000)),
+    text: transcript,
+    words: null,
+    attributionSource: "discord_user_stream",
+    diarizationModel: null,
+    asrModel: null,
+  };
+
   if (params.transcripts) {
     await params.transcripts.onUtterance({
       sessionId: params.transcripts.sessionId,
@@ -90,6 +107,7 @@ export async function processDiscordVoiceSegment(params: {
         label: ingress.speakerLabel,
       },
       text: transcript,
+      segments: [discordSpeakerSegment],
       metadata: {
         channel: "discord",
         guildId: entry.guildId,

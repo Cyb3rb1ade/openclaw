@@ -147,6 +147,39 @@ export type LinkToolsConfig = {
   models?: LinkModelConfig[];
 };
 
+export type AudioDiarizationProvider = "none" | "sortformer" | "openai" | "deepgram";
+
+export type AudioDiarizationOverlapStrategy = "duplicate" | "longest" | "first";
+
+export type AudioDiarizationConfig = {
+  /** Diarization provider. Default: "none". */
+  provider?: AudioDiarizationProvider;
+  /** Model override for cloud providers. */
+  model?: string;
+  /** Max audio duration in seconds that will be sent to diarization. Default: 3600. */
+  maxDurationSeconds?: number;
+  /** Timeout for one diarization job. Default: 300000 (5 min). */
+  jobTimeoutMs?: number;
+  /** Enable result cache. Default: true. */
+  cacheEnabled?: boolean;
+  /** Version identifier for cache invalidation when config changes. Default: "1". */
+  configVersion?: string;
+  /** Max concurrent diarization jobs. Default: 1. */
+  concurrency?: number;
+  /** ASR model id used for D3 merge cache key. */
+  asrModel?: string;
+  /** D3 merge config version. Default: "1". */
+  mergeConfigVersion?: string;
+  /** Max ASR text length allowed for D3 merge. Default: 100000. */
+  mergeMaxTextLength?: number;
+  /** Min segment duration in ms; shorter segments are merged. Default: 200. */
+  mergeMinSegmentMs?: number;
+  /** Max gap in ms between same-speaker segments to merge. Default: 500. */
+  mergeGapMs?: number;
+  /** How D3 handles overlapping diarization segments. Default: "first". */
+  mergeOverlapStrategy?: AudioDiarizationOverlapStrategy;
+};
+
 export type MediaToolsConfig = {
   /** Shared model list applied across image/audio/video. */
   models?: MediaUnderstandingModelConfig[];
@@ -162,6 +195,8 @@ export type MediaToolsConfig = {
   image?: MediaUnderstandingConfig;
   audio?: MediaUnderstandingConfig;
   video?: MediaUnderstandingConfig;
+  /** Batch/non-realtime speaker diarization configuration. */
+  diarization?: AudioDiarizationConfig;
 };
 
 export type ToolProfileId = "minimal" | "coding" | "messaging" | "full";

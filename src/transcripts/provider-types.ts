@@ -7,6 +7,49 @@ import type { OpenClawConfig } from "../config/types.openclaw.js";
  * Providers can stream live utterances, import post-hoc transcript text, expose
  * status, and stop active sessions using shared session/source descriptors.
  */
+
+/** Canonical speaker segment shared with PLUR1BUS and media-understanding-common. */
+export type SpeakerSegmentAttributionSource =
+  | "discord_user_stream"
+  | "asr_diarize"
+  | "sortformer"
+  | "manual"
+  | "enrollment"
+  | "unknown";
+
+/** Audio source family for a speaker segment. */
+export type SpeakerSegmentSource =
+  | "discord_voice"
+  | "telegram_voice"
+  | "youtube"
+  | "upload"
+  | "podcast"
+  | "meeting"
+  | "unknown";
+
+/** One word-level timestamp inside a speaker segment. */
+export type SpeakerSegmentWord = {
+  startMs: number;
+  endMs: number;
+  word: string;
+  confidence?: number;
+};
+
+/** Canonical speaker segment: who spoke when, and how we know. */
+export type SpeakerSegment = {
+  source: SpeakerSegmentSource;
+  sourceId: string | null;
+  speakerLabel: string;
+  speakerDisplayName: string | null;
+  speakerConfidence: number | null;
+  startMs: number;
+  endMs: number;
+  text: string;
+  words: SpeakerSegmentWord[] | null;
+  attributionSource: SpeakerSegmentAttributionSource;
+  diarizationModel: string | null;
+  asrModel: string | null;
+};
 /** Supported source families for transcript providers. */
 export type TranscriptSourceKind =
   | "live-audio"
@@ -42,6 +85,8 @@ export type TranscriptUtterance = {
   speaker?: TranscriptParticipant;
   text: string;
   final?: boolean;
+  /** Optional speaker-attributed segments; additive and safe to ignore. */
+  segments?: SpeakerSegment[];
   metadata?: Record<string, unknown>;
 };
 
