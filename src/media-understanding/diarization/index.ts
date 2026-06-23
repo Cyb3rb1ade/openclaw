@@ -111,6 +111,7 @@ export async function attachFallbackAndMaybeEnqueueDiarization(
     logVerbose(`diarization: merge cache hit for ${audioHash}`);
     return {
       ...output,
+      mediaOutputId: targetRef.mediaOutputId,
       segments: cachedMerge.result,
     };
   }
@@ -147,7 +148,7 @@ export async function attachFallbackAndMaybeEnqueueDiarization(
           result: merged,
           createdAt: Date.now(),
         });
-        return { ...output, segments: merged };
+        return { ...output, mediaOutputId: targetRef.mediaOutputId, segments: merged };
       } catch (err) {
         logVerbose(
           `diarization: synchronous merge failed for ${audioHash}, keeping fallback: ${String(err)}`,
@@ -162,6 +163,7 @@ export async function attachFallbackAndMaybeEnqueueDiarization(
     logVerbose(`diarization: existing job ${existingJob.id} for ${audioHash}`);
     return {
       ...output,
+      mediaOutputId: targetRef.mediaOutputId,
       segments: [createFallbackSpeakerSegment(asrText)],
     };
   }
@@ -191,6 +193,7 @@ export async function attachFallbackAndMaybeEnqueueDiarization(
   logVerbose(`diarization: enqueued job ${job.id} for ${audioHash}`);
   return {
     ...output,
+    mediaOutputId: targetRef.mediaOutputId,
     segments: [createFallbackSpeakerSegment(asrText)],
   };
 }

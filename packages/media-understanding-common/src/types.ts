@@ -32,6 +32,7 @@ export type SpeakerSegmentAttributionSource =
   | "asr_diarize"
   | "sortformer"
   | "manual"
+  | "contextual_proposal"
   | "enrollment"
   | "unknown";
 
@@ -78,6 +79,8 @@ export type MediaUnderstandingOutput = {
   model?: string;
   /** Optional speaker-attributed segments; kept additive to preserve plain-text fallback. */
   segments?: SpeakerSegment[];
+  /** Stable id for correlating this media output with later enrichment (e.g. diarization naming). */
+  mediaOutputId?: string;
 };
 
 /** Provider shape used for capability discovery and dispatch. */

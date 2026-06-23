@@ -91,6 +91,22 @@ export async function getDiarizationDb(): Promise<DatabaseSync> {
 
     CREATE INDEX IF NOT EXISTS idx_merge_results_media_output_id
       ON merge_results(mediaOutputId);
+
+    CREATE TABLE IF NOT EXISTS speaker_mappings (
+      agentId TEXT NOT NULL,
+      speakerLabel TEXT NOT NULL,
+      speakerDisplayName TEXT NOT NULL,
+      attributionSource TEXT NOT NULL,
+      confidence REAL,
+      confirmed INTEGER NOT NULL,
+      proposedAt INTEGER NOT NULL,
+      confirmedAt INTEGER,
+      contextHint TEXT,
+      PRIMARY KEY (agentId, speakerLabel)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_speaker_mappings_agent
+      ON speaker_mappings(agentId);
   `);
   sharedDb = db;
   return db;
@@ -409,4 +425,101 @@ export async function setDiarizationMergeResult(entry: AudioDiarizationMergeResu
     serializeResult(entry.result),
     entry.createdAt,
   );
+}
+
+export type SpeakerMappingRow = {
+  agentId: string;
+  speakerLabel: string;
+  speakerDisplayName: string;
+  attributionSource: string;
+  confidence: number | null;
+  confirmed: number;
+  proposedAt: number;
+  confirmedAt: number | null;
+  contextHint: string | null;
+};
+
+export async function getSpeakerMapping(
+  agentId: string,
+  speakerLabel: string,
+): Promise<SpeakerMappingRow | null> {
+  const db = await getDiarizationDb();
+  const select = db.prepare(
+    "SELECT * FROM speaker_mappings WHERE agentId = ? AND speakerLabel = ?",
+  );
+  const row = select.get(agentId, speakerLabel) as Record<string, unknown> | undefined;
+  if (!row) {
+    return null;
+  }
+  return rowToSpeakerMapping(row);
+}
+
+export async function getSpeakerMappingsByAgent(
+  agentId: string,
+  options: { confirmed?: boolean } = {},
+): Promise<SpeakerMappingRow[]> {
+  const db = await getDiarizationDb();
+  let query = "SELECT * FROM speaker_mappings WHERE agentId = ?";
+  const params: (string | number)[] = [agentId];
+  if (options.confirmed !== undefined) {
+    query += " AND confirmed = ?";
+    params.push(options.confirmed ? 1 : 0);
+  }
+  query += " ORDER BY proposedAt DESC";
+  const select = db.prepare(query);
+  const rows = select.all(...params) as Record<string, unknown>[];
+  return rows.map(rowToSpeakerMapping);
+}
+
+export async function setSpeakerMapping(
+  mapping: Omit<SpeakerMappingRow, "confirmedAt"> & { confirmedAt?: number | null },
+): Promise<void> {
+  const db = await getDiarizationDb();
+  const upsert = db.prepare(`
+    INSERT INTO speaker_mappings (
+      agentId, speakerLabel, speakerDisplayName, attributionSource, confidence,
+      confirmed, proposedAt, confirmedAt, contextHint
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(agentId, speakerLabel)
+    DO UPDATE SET
+      speakerDisplayName = excluded.speakerDisplayName,
+      attributionSource = excluded.attributionSource,
+      confidence = excluded.confidence,
+      confirmed = excluded.confirmed,
+      proposedAt = excluded.proposedAt,
+      confirmedAt = excluded.confirmedAt,
+      contextHint = excluded.contextHint
+  `);
+  upsert.run(
+    mapping.agentId,
+    mapping.speakerLabel,
+    mapping.speakerDisplayName,
+    mapping.attributionSource,
+    mapping.confidence ?? null,
+    mapping.confirmed,
+    mapping.proposedAt,
+    mapping.confirmedAt ?? null,
+    mapping.contextHint ?? null,
+  );
+}
+
+export async function deleteSpeakerMapping(agentId: string, speakerLabel: string): Promise<void> {
+  const db = await getDiarizationDb();
+  const del = db.prepare("DELETE FROM speaker_mappings WHERE agentId = ? AND speakerLabel = ?");
+  del.run(agentId, speakerLabel);
+}
+
+function rowToSpeakerMapping(row: Record<string, unknown>): SpeakerMappingRow {
+  return {
+    agentId: String(row.agentId),
+    speakerLabel: String(row.speakerLabel),
+    speakerDisplayName: String(row.speakerDisplayName),
+    attributionSource: String(row.attributionSource),
+    confidence: row.confidence != null ? Number(row.confidence) : null,
+    confirmed: Number(row.confirmed),
+    proposedAt: Number(row.proposedAt),
+    confirmedAt: row.confirmedAt != null ? Number(row.confirmedAt) : null,
+    contextHint: row.contextHint != null ? String(row.contextHint) : null,
+  };
 }

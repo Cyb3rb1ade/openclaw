@@ -33,15 +33,35 @@ function formatSection(
 
 /** Renders speaker-attributed segments as plain text without assuming identities. */
 function formatSpeakerSegments(segments: SpeakerSegment[]): string {
-  return segments.map((segment) => `[${segment.speakerLabel}]: ${segment.text}`).join("\n");
+  return segments
+    .map((segment) => {
+      const name = segment.speakerDisplayName ?? segment.speakerLabel;
+      return `[${name}]: ${segment.text}`;
+    })
+    .join("\n");
 }
+
+const MEDIA_OUTPUT_ID_TOKEN_RE = /^<!-- media-output-id: [a-f0-9-]+ -->\n?/i;
 
 /** Returns the best plain-text representation of an audio output. */
 function formatAudioTranscriptText(output: MediaUnderstandingOutput): string {
+  let body = "";
   if (output.segments && output.segments.length > 0) {
-    return formatSpeakerSegments(output.segments);
+    body = formatSpeakerSegments(output.segments);
+  } else {
+    body = output.text;
   }
-  return output.text;
+  if (output.mediaOutputId) {
+    // Hidden metadata token for downstream enrichment. It is stripped before
+    // memory capture and should not affect model behavior.
+    return `<!-- media-output-id: ${output.mediaOutputId} -->\n${body}`;
+  }
+  return body;
+}
+
+/** Strip the hidden media-output-id token from a transcript string. */
+export function stripMediaOutputIdToken(text: string): string {
+  return text.replace(MEDIA_OUTPUT_ID_TOKEN_RE, "");
 }
 
 /** Formats media-understanding outputs into the chat body sent back to the model. */
