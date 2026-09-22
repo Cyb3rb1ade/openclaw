@@ -284,12 +284,14 @@ export type MemoryPluginPublicArtifactsProvider = {
 /** One sleep phase as the owning memory plugin actually schedules it. */
 export type MemoryPluginDreamingPhaseStatus = {
   enabled?: boolean;
-  /** Cron expression for this phase alone; phases need not share one schedule. */
-  cron?: string;
   /**
-   * Whether the phase is actually scheduled to run. Providers that dream on an
-   * event instead of a timer report `true` with no `cron`.
+   * Cron expression for this phase alone; phases need not share one schedule.
+   * Omitting it keeps the host-resolved expression, so a phase that runs on an
+   * event rather than a timer reports an empty string to show no schedule at
+   * all instead of inheriting one it does not follow.
    */
+  cron?: string;
+  /** Whether the phase is actually scheduled to run. */
   scheduled?: boolean;
   lastRunAtMs?: number;
   nextRunAtMs?: number;
