@@ -281,11 +281,59 @@ export type MemoryPluginPublicArtifactsProvider = {
   listArtifacts(params: { cfg: OpenClawConfig }): Promise<MemoryPluginPublicArtifact[]>;
 };
 
+/** One sleep phase as the owning memory plugin actually schedules it. */
+export type MemoryPluginDreamingPhaseStatus = {
+  enabled?: boolean;
+  /** Cron expression for this phase alone; phases need not share one schedule. */
+  cron?: string;
+  /**
+   * Whether the phase is actually scheduled to run. Providers that dream on an
+   * event instead of a timer report `true` with no `cron`.
+   */
+  scheduled?: boolean;
+  lastRunAtMs?: number;
+  nextRunAtMs?: number;
+};
+
+/**
+ * Dreaming state reported by the memory slot owner. Every field is optional:
+ * whatever a provider omits keeps the host-resolved value, so a partial report
+ * never blanks out the page.
+ */
+export type MemoryPluginDreamingStatus = {
+  enabled?: boolean;
+  timezone?: string;
+  phases?: {
+    light?: MemoryPluginDreamingPhaseStatus;
+    deep?: MemoryPluginDreamingPhaseStatus;
+    rem?: MemoryPluginDreamingPhaseStatus;
+  };
+  /** Consolidation counters; omitted counters keep the memory-core figures. */
+  stats?: {
+    shortTermCount?: number;
+    promotedTotal?: number;
+    promotedToday?: number;
+    lastPromotedAt?: string;
+  };
+};
+
+export type MemoryPluginDreamingProvider = {
+  getStatus(params: {
+    cfg: OpenClawConfig;
+    agentId: string;
+  }): Promise<MemoryPluginDreamingStatus | null | undefined>;
+};
+
 export type MemoryPluginCapability = {
   promptBuilder?: MemoryPromptSectionBuilder;
   flushPlanResolver?: MemoryFlushPlanResolver;
   runtime?: MemoryPluginRuntime;
   publicArtifacts?: MemoryPluginPublicArtifactsProvider;
+  /**
+   * Lets a non-`memory-core` slot owner report its own dreaming schedule and
+   * consolidation counters. Absent providers keep memory-core's resolution.
+   */
+  dreaming?: MemoryPluginDreamingProvider;
   /** Local deterministic recall tool required by provider-owned direct lookup. */
   deterministicRecallToolName?: string;
   /** Whether recall may read protected same-agent private session transcripts. */
