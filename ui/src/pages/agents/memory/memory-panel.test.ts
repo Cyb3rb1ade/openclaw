@@ -389,6 +389,31 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     ).toBe(true);
   });
 
+  it("binds the toggle to configuration while a slot owner reports its own dreaming", () => {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, {
+      plugins: {
+        slots: { memory: "memory-core" },
+        entries: { "memory-core": { config: { dreaming: { enabled: false } } } },
+      },
+    });
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = context;
+    page.agentId = "main";
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedEnabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    const container = document.createElement("div");
+
+    render(page.render(), container);
+
+    // The switch shows what it writes; the scene shows what actually runs.
+    const toggle = container.querySelector<HTMLButtonElement>(".dreams__phase-toggle");
+    expect(toggle?.textContent).toContain("Off");
+    expect(toggle?.classList.contains("dreams__phase-toggle--on")).toBe(false);
+    expect(container.querySelector(".dreams__status-label")?.textContent).toContain("Dreaming");
+  });
+
   it("omits default provenance when engine Off has no latent override", () => {
     const context = contextWithGateway({} as GatewayBrowserClient, true, {
       plugins: { slots: { memory: "none" } },

@@ -409,6 +409,9 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     // cached payload for a future refresh, but never present it as current runtime state.
     const dreamingStatus = configuredDreaming.engineOff ? null : dreaming.dreamingStatus;
     const dreamingOn = dreamingStatus?.enabled ?? configuredDreaming.enabled;
+    // The toggle stays bound to the configuration it writes; a slot owner that
+    // dreams on its own only lights the scene.
+    const dreamingActive = dreamingStatus?.reportedEnabled ?? dreamingOn;
     const loading = dreaming.dreamingStatusLoading || dreaming.dreamingModeSaving;
     const canUpdateConfig = canCallDreamingMethod(dreaming, "config.patch", "operator.admin");
     const refreshLoading = dreaming.dreamingStatusLoading || dreaming.dreamDiaryLoading;
@@ -480,7 +483,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
           ),
         },
         viewState: this.viewState,
-        active: dreamingOn,
+        active: dreamingActive,
         selectedAgentId,
         shortTermCount: dreamingStatus?.shortTermCount ?? 0,
         promotedCount: dreamingStatus?.promotedToday ?? 0,
