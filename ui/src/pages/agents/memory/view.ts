@@ -13,6 +13,7 @@ import { registerDreamingEnglish } from "../../../i18n/locales/en-dreaming.ts";
 import { registerSettingsEnglish } from "../../../i18n/locales/en-settings.ts";
 import { formatUiError } from "../../../lib/format-error.ts";
 import "../../../styles/dreams.css";
+import { formatPhaseRun, type DreamingPhaseInfo } from "./dreaming-phase-run.ts";
 import type { DreamingEntry, WikiImportInsights, WikiOverview } from "./dreaming.ts";
 
 registerSettingsEnglish();
@@ -86,13 +87,6 @@ function formatDiaryChipLabel(date: string): string {
   const value = new Date(parsed);
   return `${value.getMonth() + 1}/${value.getDate()}`;
 }
-
-type DreamingPhaseInfo = {
-  enabled: boolean;
-  cron: string;
-  nextRunAtMs?: number;
-  lastRunAtMs?: number;
-};
 
 type DreamingProps = {
   access: {
@@ -346,25 +340,6 @@ function flattenDiaryBody(body: string): string[] {
       )
       .filter((line) => line.length > 0)
   );
-}
-
-function formatPhaseTime(atMs: number): string {
-  return new Date(atMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-/**
- * What the phase chip shows: the next scheduled run, or — for a phase that
- * runs on an event rather than a timer and so has no next run — when it last
- * ran. A dash only when neither is known.
- */
-function formatPhaseRun(phase?: DreamingPhaseInfo): string {
-  if (phase?.nextRunAtMs) {
-    return formatPhaseTime(phase.nextRunAtMs);
-  }
-  if (phase?.lastRunAtMs) {
-    return t("dreaming.phase.lastRun", { time: formatPhaseTime(phase.lastRunAtMs) });
-  }
-  return "—";
 }
 
 function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
