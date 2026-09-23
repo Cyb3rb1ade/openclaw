@@ -346,9 +346,12 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
       return;
     }
     try {
+      // Rechecked before each write step: the owner's report can also land
+      // while the write awaits the schema lookup.
       const canDispatch = () =>
         this.isTaskScopeCurrent(scope) &&
         this.context.runtimeConfig === runtimeConfig &&
+        !this.ownerRunsDreaming() &&
         canCallDreamingMethod(scope.state, "config.patch", "operator.admin");
       const updated = await this.runDreamingTask(
         (dreamingState) =>

@@ -443,6 +443,42 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(page.pendingEnabled).toBeNull();
   });
 
+  it("does not write when the owner's report arrives during the schema lookup", async () => {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, {
+      plugins: { slots: { memory: "memory-core" } },
+    });
+    const page = createPage(context);
+    const runtimeConfig = context.runtimeConfig as unknown as {
+      state: Record<string, unknown>;
+      lookupSchemaPath: ReturnType<typeof vi.fn>;
+      patch: ReturnType<typeof vi.fn>;
+    };
+    runtimeConfig.state.client = {};
+    runtimeConfig.state.connected = true;
+    runtimeConfig.state.configSnapshot = {
+      hash: "hash-1",
+      config: { plugins: { slots: { memory: "memory-core" } } },
+    };
+    // The status refresh lands while the write awaits the schema lookup.
+    runtimeConfig.lookupSchemaPath = vi.fn(async () => {
+      page.dreaming.dreamingStatus = {
+        enabled: false,
+        reportedEnabled: true,
+      } as NonNullable<DreamingState["dreamingStatus"]>;
+      return {};
+    });
+    document.body.append(page);
+    await page.updateComplete;
+    page.pendingEnabled = true;
+    page.toggleConfirmOpen = true;
+
+    await page.confirmToggle();
+
+    expect(runtimeConfig.lookupSchemaPath).toHaveBeenCalled();
+    expect(runtimeConfig.patch).not.toHaveBeenCalled();
+    expect(page.toggleConfirmLoading).toBe(false);
+  });
+
   it("keeps the toggle usable when the slot owner reports nothing", () => {
     const context = contextWithGateway({} as GatewayBrowserClient, true, {
       plugins: {
