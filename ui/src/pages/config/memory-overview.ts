@@ -154,6 +154,9 @@ function phaseScheduleDescription(
 }
 
 function renderSchedule(dreaming: DreamingStatus) {
+  // A slot owner that dreams on its own reports whether it runs; `enabled`
+  // is only the host toggle, which such an owner does not follow.
+  const running = dreaming.reportedEnabled ?? dreaming.enabled;
   const phases = [
     ["light", dreaming.phases.light],
     ["rem", dreaming.phases.rem],
@@ -170,13 +173,13 @@ function renderSchedule(dreaming: DreamingStatus) {
             ${phaseScheduleDescription(
               phase,
               dreaming.timezone,
-              dreaming.enabled && phase.enabled && phase.managedCronPresent,
+              running && phase.enabled && phase.managedCronPresent,
             )}
           `,
           control: renderSettingsStatus({
-            kind: dreaming.enabled && phase.enabled && phase.managedCronPresent ? "ok" : "muted",
+            kind: running && phase.enabled && phase.managedCronPresent ? "ok" : "muted",
             label:
-              !dreaming.enabled || !phase.enabled
+              !running || !phase.enabled
                 ? t("common.disabled")
                 : phase.managedCronPresent
                   ? t("common.enabled")

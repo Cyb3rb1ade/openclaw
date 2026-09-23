@@ -183,6 +183,22 @@ describe("renderMemoryOverview", () => {
     expect(phaseRows.every((row) => !row.textContent?.includes("next "))).toBe(true);
   });
 
+  it("schedules the phases a slot owner reports running while the host toggle is off", () => {
+    const payload = fixturePayload();
+    if (payload.dreaming) {
+      payload.dreaming.enabled = false;
+      payload.dreaming.reportedEnabled = true;
+    }
+    const container = renderOverview({ kind: "ready", payload });
+    const phaseRows = [...container.querySelectorAll(".settings-row")].filter((row) =>
+      /Light phase|Deep phase|REM phase/.test(row.textContent ?? ""),
+    );
+
+    expect(phaseRows).toHaveLength(3);
+    expect(phaseRows.every((row) => row.textContent?.includes("Enabled"))).toBe(true);
+    expect(phaseRows.some((row) => row.textContent?.includes("Disabled"))).toBe(false);
+  });
+
   it("explains the phases in sweep order and links to the dreaming guide", () => {
     const container = renderOverview({ kind: "ready", payload: fixturePayload() });
     const phaseRows = [...container.querySelectorAll(".settings-row")].filter((row) =>
