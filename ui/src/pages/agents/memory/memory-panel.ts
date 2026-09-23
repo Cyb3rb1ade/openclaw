@@ -294,7 +294,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
 
   private setEnabled(enabled: boolean, dreamingOn: boolean) {
     if (
-      this.ownerRunsDreaming() ||
+      this.ownerBlocks(enabled) ||
       !canCallDreamingMethod(this.dreaming, "config.patch", "operator.admin") ||
       this.dreaming.dreamingModeSaving ||
       this.toggleConfirmLoading ||
@@ -317,14 +317,23 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     this.dreaming.dreamingStatusError = null;
   }
 
-  /** A slot owner that reports its own dreaming controls it; the host toggle stays locked. */
+  /** A slot owner that reports its own dreaming controls it. */
   private ownerRunsDreaming(): boolean {
     return typeof this.dreaming.dreamingStatus?.reportedEnabled === "boolean";
   }
 
+  /**
+   * Turning the host sweep on beside such an owner would dream twice, so that
+   * direction is locked. Turning it off stays possible: an installation that
+   * adopts a reporting owner while the host sweep is on needs a way to stop it.
+   */
+  private ownerBlocks(enabled: boolean | null): boolean {
+    return enabled === true && this.ownerRunsDreaming();
+  }
+
   private async confirmToggle() {
     // The owner's report can arrive while the confirmation is already open.
-    if (this.ownerRunsDreaming()) {
+    if (this.ownerBlocks(this.pendingEnabled)) {
       this.toggleConfirmOpen = false;
       this.pendingEnabled = null;
       return;
@@ -351,7 +360,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
       const canDispatch = () =>
         this.isTaskScopeCurrent(scope) &&
         this.context.runtimeConfig === runtimeConfig &&
-        !this.ownerRunsDreaming() &&
+        !this.ownerBlocks(enabled) &&
         canCallDreamingMethod(scope.state, "config.patch", "operator.admin");
       const updated = await this.runDreamingTask(
         (dreamingState) =>
@@ -362,10 +371,12 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
         return;
       }
       if (!updated) {
-        // Declined by the owner lock, not failed: close like the early guard does.
-        if (this.ownerRunsDreaming()) {
+        // Declined by the owner lock, not failed: close like the early guard
+        // does, and drop the failure a declined queued patch leaves behind.
+        if (this.ownerBlocks(enabled)) {
           this.toggleConfirmOpen = false;
           this.pendingEnabled = null;
+          this.dreaming.dreamingStatusError = null;
           return;
         }
         this.dreaming.dreamingStatusError ??= t("dreaming.toggleConfirmation.failed");
@@ -435,10 +446,14 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     const dreamingActive = dreamingStatus?.reportedEnabled ?? dreamingOn;
     // A slot owner that reports its own dreaming runs it itself. The toggle
     // writes the host setting, which such an owner does not follow and which
-    // may start memory-core's own sweep beside it, so it is locked there.
+    // starts memory-core's own sweep beside it, so turning it on is locked.
+    // Turning an already running host sweep off stays possible.
     const ownerDreams = typeof dreamingStatus?.reportedEnabled === "boolean";
+    const ownerLocksToggle = ownerDreams && !dreamingOn;
     const ownerDreamsHint = ownerDreams
-      ? t("dreaming.header.ownerManaged", { plugin: configuredDreaming.pluginId })
+      ? t(dreamingOn ? "dreaming.header.ownerManagedHostOn" : "dreaming.header.ownerManaged", {
+          plugin: configuredDreaming.pluginId,
+        })
       : undefined;
     const loading = dreaming.dreamingStatusLoading || dreaming.dreamingModeSaving;
     const canUpdateConfig = canCallDreamingMethod(dreaming, "config.patch", "operator.admin");
@@ -470,7 +485,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
             </span>
             <button
               class="dreams__phase-toggle ${dreamingOn ? "dreams__phase-toggle--on" : ""}"
-              ?disabled=${!canUpdateConfig || loading || configuredDreaming.engineOff || ownerDreams}
+              ?disabled=${!canUpdateConfig || loading || configuredDreaming.engineOff || ownerLocksToggle}
               title=${ownerDreamsHint ?? nothing}
               @click=${() => this.setEnabled(!dreamingOn, dreamingOn)}
             >

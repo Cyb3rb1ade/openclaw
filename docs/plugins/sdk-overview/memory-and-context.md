@@ -50,7 +50,9 @@ engine unchanged, and tries that engine again on the next logical turn.
   own resolution field by field: every field the provider omits keeps the
   host-resolved value, and without a provider the response is unchanged.
   Reported `enabled` arrives as `reportedEnabled` and lights the scene; the
-  page's toggle keeps showing the `memory-core` configuration it writes.
+  page's toggle keeps showing the `memory-core` configuration it writes. While
+  a provider reports `enabled`, the toggle cannot turn that sweep on, which would
+  dream twice, but can still turn an already running sweep off.
   Phases may carry their own `cron`; `scheduled` sets the page's
   managed-cron marker. A reported `cron` replaces the host schedule for that
   phase, including the next run of `memory-core`'s sweep, so only a

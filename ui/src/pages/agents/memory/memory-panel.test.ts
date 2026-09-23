@@ -483,6 +483,107 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(page.dreaming.dreamingStatusError).toBeNull();
   });
 
+  function mountWritablePanel(configSnapshotConfig: Record<string, unknown>) {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, configSnapshotConfig);
+    const page = createPage(context);
+    const runtimeConfig = context.runtimeConfig as unknown as {
+      state: Record<string, unknown>;
+      lookupSchemaPath: ReturnType<typeof vi.fn>;
+      patch: ReturnType<typeof vi.fn>;
+    };
+    runtimeConfig.state.client = {};
+    runtimeConfig.state.connected = true;
+    runtimeConfig.state.configSnapshot = { hash: "hash-1", config: configSnapshotConfig };
+    runtimeConfig.lookupSchemaPath = vi.fn(async () => ({}));
+    return { page, runtimeConfig };
+  }
+
+  it("clears the failure when a queued patch is declined by the owner lock", async () => {
+    const { page, runtimeConfig } = mountWritablePanel({
+      plugins: { slots: { memory: "memory-core" } },
+    });
+    // The report lands while config.patch waits in its queue; the queue then
+    // declines the write through canDispatch and returns false.
+    runtimeConfig.patch = vi.fn(async ({ canDispatch }: { canDispatch: () => boolean }) => {
+      page.dreaming.dreamingStatus = {
+        enabled: false,
+        reportedEnabled: true,
+      } as NonNullable<DreamingState["dreamingStatus"]>;
+      return canDispatch();
+    });
+    document.body.append(page);
+    await page.updateComplete;
+    page.pendingEnabled = true;
+    page.toggleConfirmOpen = true;
+
+    await page.confirmToggle();
+
+    expect(runtimeConfig.patch).toHaveBeenCalledTimes(1);
+    expect(page.dreaming.dreamingStatusError).toBeNull();
+    expect(page.toggleConfirmOpen).toBe(false);
+    expect(page.pendingEnabled).toBeNull();
+  });
+
+  it("lets an already running host sweep be turned off beside a reporting owner", async () => {
+    const config = {
+      plugins: {
+        slots: { memory: "memory-core" },
+        entries: { "memory-core": { config: { dreaming: { enabled: true } } } },
+      },
+    };
+    const { page, runtimeConfig } = mountWritablePanel(config);
+    page.dreaming.dreamingStatus = {
+      enabled: true,
+      reportedEnabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    document.body.append(page);
+    await page.updateComplete;
+
+    page.pendingEnabled = false;
+    page.toggleConfirmOpen = true;
+    await page.confirmToggle();
+
+    expect(runtimeConfig.patch).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(runtimeConfig.patch.mock.calls[0]?.[0]?.raw)).toContain(
+      '"enabled":false',
+    );
+  });
+
+  it("offers turning a running host sweep off beside a reporting owner", async () => {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, {
+      plugins: {
+        slots: { memory: "memory-core" },
+        entries: { "memory-core": { config: { dreaming: { enabled: true } } } },
+      },
+    });
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = context;
+    page.agentId = "main";
+    page.loadAll = vi.fn(async () => undefined);
+    document.body.append(page);
+    await page.updateComplete;
+    page.dreaming.dreamingStatus = {
+      enabled: true,
+      reportedEnabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    page.requestUpdate();
+    await page.updateComplete;
+
+    const toggle = page.querySelector<HTMLButtonElement>(".dreams__phase-toggle");
+    expect(toggle?.textContent).toContain("On");
+    expect(toggle?.disabled).toBe(false);
+    expect(toggle?.title).toContain("memory-core's sweep is on as well");
+
+    // The opposite direction stays locked.
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedEnabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    page.requestUpdate();
+    await page.updateComplete;
+    expect(page.querySelector<HTMLButtonElement>(".dreams__phase-toggle")?.disabled).toBe(true);
+  });
+
   it("keeps the toggle usable when the slot owner reports nothing", () => {
     const context = contextWithGateway({} as GatewayBrowserClient, true, {
       plugins: {
