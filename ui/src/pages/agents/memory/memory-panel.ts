@@ -1,5 +1,5 @@
 import { consume } from "@lit/context";
-import { html, type PropertyValues } from "lit";
+import { html, nothing, type PropertyValues } from "lit";
 import { property, state } from "lit/decorators.js";
 import {
   applicationContext,
@@ -412,6 +412,13 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     // The toggle stays bound to the configuration it writes; a slot owner that
     // dreams on its own only lights the scene.
     const dreamingActive = dreamingStatus?.reportedEnabled ?? dreamingOn;
+    // A slot owner that reports its own dreaming runs it itself. The toggle
+    // writes the host setting, which such an owner does not follow and which
+    // may start memory-core's own sweep beside it, so it is locked there.
+    const ownerDreams = typeof dreamingStatus?.reportedEnabled === "boolean";
+    const ownerDreamsHint = ownerDreams
+      ? t("dreaming.header.ownerManaged", { plugin: configuredDreaming.pluginId })
+      : undefined;
     const loading = dreaming.dreamingStatusLoading || dreaming.dreamingModeSaving;
     const canUpdateConfig = canCallDreamingMethod(dreaming, "config.patch", "operator.admin");
     const refreshLoading = dreaming.dreamingStatusLoading || dreaming.dreamDiaryLoading;
@@ -432,15 +439,18 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
               ${
                 configuredDreaming.engineOff
                   ? t("dreaming.header.engineOff")
-                  : renderSettingsDefaultDescription(
-                      t("common.enabled"),
-                      configuredDreaming.overridden,
-                    )
+                  : ownerDreamsHint
+                    ? ownerDreamsHint
+                    : renderSettingsDefaultDescription(
+                        t("common.enabled"),
+                        configuredDreaming.overridden,
+                      )
               }
             </span>
             <button
               class="dreams__phase-toggle ${dreamingOn ? "dreams__phase-toggle--on" : ""}"
-              ?disabled=${!canUpdateConfig || loading || configuredDreaming.engineOff}
+              ?disabled=${!canUpdateConfig || loading || configuredDreaming.engineOff || ownerDreams}
+              title=${ownerDreamsHint ?? nothing}
               @click=${() => this.setEnabled(!dreamingOn, dreamingOn)}
             >
               <span class="dreams__phase-toggle-dot"></span>

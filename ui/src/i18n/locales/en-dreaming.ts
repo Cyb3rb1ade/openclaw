@@ -14,6 +14,7 @@ const enDreaming = {
       on: "Dreaming On",
       off: "Dreaming Off",
       engineOff: "Memory engine is Off. Choose an engine in Settings to enable dreaming.",
+      ownerManaged: "{plugin} runs its own dreaming. Manage it in that plugin's settings.",
     },
     toggleConfirmation: {
       subtitle: "Dreaming is a global setting; it is not scoped to this agent.",
