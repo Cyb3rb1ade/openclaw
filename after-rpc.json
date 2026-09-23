@@ -1,0 +1,41 @@
+{
+  "agentId": "main",
+  "dreaming": {
+    "enabled": false,
+    "reportedEnabled": true,
+    "timezone": "Europe/Berlin",
+    "phases": {
+      "light": {
+        "enabled": true,
+        "cron": "",
+        "lookbackDays": 2,
+        "limit": 100,
+        "managedCronPresent": true,
+        "lastRunAtMs": 1790193801276
+      },
+      "deep": {
+        "enabled": true,
+        "cron": "0 4 * * *",
+        "limit": 10,
+        "minScore": 0.75,
+        "minRecallCount": 3,
+        "minUniqueQueries": 3,
+        "recencyHalfLifeDays": 14,
+        "managedCronPresent": true,
+        "maxAgeDays": 30,
+        "lastRunAtMs": 1790128800256,
+        "nextRunAtMs": 1790215200000
+      },
+      "rem": {
+        "enabled": true,
+        "cron": "15 1 * * *",
+        "lookbackDays": 7,
+        "limit": 10,
+        "minPatternStrength": 0.75,
+        "managedCronPresent": true,
+        "lastRunAtMs": 1790118900129,
+        "nextRunAtMs": 1790205300000
+      }
+    }
+  }
+}
