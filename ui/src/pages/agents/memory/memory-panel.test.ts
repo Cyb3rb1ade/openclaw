@@ -477,6 +477,10 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(runtimeConfig.lookupSchemaPath).toHaveBeenCalled();
     expect(runtimeConfig.patch).not.toHaveBeenCalled();
     expect(page.toggleConfirmLoading).toBe(false);
+    // Declined, not failed: the dialog closes without an error.
+    expect(page.toggleConfirmOpen).toBe(false);
+    expect(page.pendingEnabled).toBeNull();
+    expect(page.dreaming.dreamingStatusError).toBeNull();
   });
 
   it("keeps the toggle usable when the slot owner reports nothing", () => {

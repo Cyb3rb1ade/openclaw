@@ -362,6 +362,12 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
         return;
       }
       if (!updated) {
+        // Declined by the owner lock, not failed: close like the early guard does.
+        if (this.ownerRunsDreaming()) {
+          this.toggleConfirmOpen = false;
+          this.pendingEnabled = null;
+          return;
+        }
         this.dreaming.dreamingStatusError ??= t("dreaming.toggleConfirmation.failed");
         return;
       }
