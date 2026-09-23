@@ -35,6 +35,15 @@ import {
   expectEmbeddingErrorResponse,
 } from "./doctor.test-support.js";
 
+// Only the dreaming provider lookup is replaced; every other memory-state
+// export stays real. Default null keeps every existing test on the
+// no-provider path.
+const resolveActiveMemoryDreamingStatus = vi.hoisted(() => vi.fn(async () => null as unknown));
+vi.mock("../../plugins/memory-state.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../plugins/memory-state.js")>()),
+  resolveActiveMemoryDreamingStatus,
+}));
+
 describe("doctor.memory agent targeting", () => {
   beforeEach(() => {
     getRuntimeConfig.mockReset().mockReturnValue({});
@@ -128,6 +137,7 @@ describe("doctor.memory agent targeting", () => {
 
 describe("doctor.memory.status", () => {
   beforeEach(() => {
+    resolveActiveMemoryDreamingStatus.mockReset().mockResolvedValue(null);
     getRuntimeConfig.mockReset().mockReturnValue({});
     resolveDefaultAgentId.mockClear();
     resolveAgentWorkspaceDir.mockReset().mockReturnValue("/tmp/openclaw");
@@ -333,6 +343,45 @@ describe("doctor.memory.status", () => {
     await invokeDoctorMemory("doctor.memory.status", respond, { params: { probe: true } });
 
     expectEmbeddingErrorResponse(respond, "memory search unavailable");
+  });
+
+  it("reports a slot owner's dreaming status even when no search manager exists", async () => {
+    getMemorySearchManager.mockResolvedValue({ manager: null, error: "memory search unavailable" });
+    resolveActiveMemoryDreamingStatus.mockResolvedValueOnce({
+      enabled: true,
+      timezone: "Europe/Berlin",
+      phases: {
+        light: { enabled: true, scheduled: true, cron: "" },
+        rem: { enabled: true, scheduled: true, cron: "15 1 * * *", nextRunAtMs: 1_000 },
+      },
+    });
+    const respond = vi.fn();
+
+    await invokeDoctorMemory("doctor.memory.status", respond, { params: {} });
+
+    const payload = respondPayload(respond) as Record<string, unknown>;
+    // The search diagnostic stays exactly as before.
+    expect(payload.embedding).toEqual({ ok: false, error: "memory search unavailable" });
+    const dreaming = payload.dreaming as Record<string, any>;
+    expect(dreaming.enabled).toBe(true);
+    expect(dreaming.timezone).toBe("Europe/Berlin");
+    expect(dreaming.phases.rem).toMatchObject({
+      cron: "15 1 * * *",
+      managedCronPresent: true,
+      nextRunAtMs: 1_000,
+    });
+    expect(dreaming.phases.light).toMatchObject({ cron: "", managedCronPresent: true });
+    expect(dreaming.shortTermCount).toBe(0);
+  });
+
+  it("keeps the no-manager response unchanged when no dreaming provider reports", async () => {
+    getMemorySearchManager.mockResolvedValue({ manager: null, error: "memory search unavailable" });
+    const respond = vi.fn();
+
+    await invokeDoctorMemory("doctor.memory.status", respond, { params: {} });
+
+    const payload = respondPayload(respond) as Record<string, unknown>;
+    expect(payload.dreaming).toBeUndefined();
   });
 
   it("returns probe failure when manager probe throws", async () => {

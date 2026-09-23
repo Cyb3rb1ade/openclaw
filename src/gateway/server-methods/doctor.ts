@@ -214,6 +214,50 @@ function applyReportedDreamingPhase<T extends { managedCronPresent: boolean; cro
   };
 }
 
+/**
+ * Builds the dreaming section from the host resolution, managed-cron status and
+ * whatever the slot owner reported. Shared by the search and no-search paths so
+ * a provider is consulted regardless of search availability.
+ */
+function composeDreamingPayload(
+  base: DoctorMemoryDreamingConfigPayload & DreamingStoreStats,
+  cronStatuses: Awaited<ReturnType<typeof resolveAllManagedDreamingCronStatuses>>,
+  reported: MemoryPluginDreamingStatus | null,
+): DoctorMemoryDreamingPayload {
+  return {
+    ...base,
+    ...applyReportedDreamingTop(reported),
+    ...(reported?.stats ?? {}),
+    phases: {
+      light: applyReportedDreamingPhase(
+        { ...base.phases.light, ...cronStatuses.light },
+        reported?.phases?.light,
+      ),
+      deep: applyReportedDreamingPhase(
+        { ...base.phases.deep, ...cronStatuses.deep },
+        reported?.phases?.deep,
+      ),
+      rem: applyReportedDreamingPhase(
+        { ...base.phases.rem, ...cronStatuses.rem },
+        reported?.phases?.rem,
+      ),
+    },
+  };
+}
+
+const EMPTY_DREAMING_STORE_STATS: DreamingStoreStats = {
+  shortTermCount: 0,
+  recallSignalCount: 0,
+  dailySignalCount: 0,
+  groundedSignalCount: 0,
+  totalSignalCount: 0,
+  phaseSignalCount: 0,
+  lightPhaseHitCount: 0,
+  remPhaseHitCount: 0,
+  promotedTotal: 0,
+  promotedToday: 0,
+};
+
 function resolveDreamingConfig(cfg: OpenClawConfig): DoctorMemoryDreamingConfigPayload {
   const resolved = resolveMemoryDreamingConfig({
     pluginConfig: resolveMemoryDreamingPluginConfig(cfg),
@@ -641,6 +685,10 @@ export const createDoctorHandlers = (
       purpose: "status",
     });
     if (!manager) {
+      // A slot owner may report dreaming without registering search. Its
+      // report is the only dreaming data on this path; without one the
+      // response stays exactly as it was.
+      const reportedDreaming = await resolveActiveMemoryDreamingStatus({ cfg, agentId });
       const payload: DoctorMemoryStatusPayload = {
         agentId,
         searchRuntimeRegistered,
@@ -648,6 +696,15 @@ export const createDoctorHandlers = (
           ok: false,
           error: error ?? "memory search unavailable",
         },
+        ...(reportedDreaming
+          ? {
+              dreaming: composeDreamingPayload(
+                { ...resolveDreamingConfig(cfg), ...EMPTY_DREAMING_STORE_STATS },
+                await resolveAllManagedDreamingCronStatuses(context),
+                reportedDreaming,
+              ),
+            }
+          : {}),
       };
       respond(true, payload, undefined);
       return;
@@ -693,18 +750,7 @@ export const createDoctorHandlers = (
                 ),
               ),
             )
-          : {
-              shortTermCount: 0,
-              recallSignalCount: 0,
-              dailySignalCount: 0,
-              groundedSignalCount: 0,
-              totalSignalCount: 0,
-              phaseSignalCount: 0,
-              lightPhaseHitCount: 0,
-              remPhaseHitCount: 0,
-              promotedTotal: 0,
-              promotedToday: 0,
-            };
+          : EMPTY_DREAMING_STORE_STATS;
       const cronStatuses = await resolveAllManagedDreamingCronStatuses(context);
       const payload: DoctorMemoryStatusPayload = {
         agentId,
@@ -716,26 +762,11 @@ export const createDoctorHandlers = (
             ? (runtime as DoctorMemoryEmbeddingRuntimePayload)
             : undefined;
         })(),
-        dreaming: {
-          ...dreamingConfig,
-          ...storeStats,
-          ...applyReportedDreamingTop(reportedDreaming),
-          ...(reportedDreaming?.stats ?? {}),
-          phases: {
-            light: applyReportedDreamingPhase(
-              { ...dreamingConfig.phases.light, ...cronStatuses.light },
-              reportedDreaming?.phases?.light,
-            ),
-            deep: applyReportedDreamingPhase(
-              { ...dreamingConfig.phases.deep, ...cronStatuses.deep },
-              reportedDreaming?.phases?.deep,
-            ),
-            rem: applyReportedDreamingPhase(
-              { ...dreamingConfig.phases.rem, ...cronStatuses.rem },
-              reportedDreaming?.phases?.rem,
-            ),
-          },
-        },
+        dreaming: composeDreamingPayload(
+          { ...dreamingConfig, ...storeStats },
+          cronStatuses,
+          reportedDreaming,
+        ),
       };
       respond(true, payload, undefined);
     } catch (err) {
