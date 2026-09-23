@@ -42,6 +42,20 @@ engine unchanged, and tries that engine again on the next logical turn.
   artifacts still use `listActiveMemoryPublicArtifacts(...)` from the retained
   `openclaw/plugin-sdk/memory-host-core` facade until a focused public consumer
   API exists; they must not reach into another plugin's private layout.
+- `registerMemoryCapability` may also expose `dreaming.getStatus({ cfg, agentId })`
+  so a slot owner that runs its own consolidation can report it on the Memory
+  page. This is a **reporting-only** contract: dreaming lifecycle, the managed
+  sweep cron, and the page's dream actions stay owned by `memory-core`, and
+  nothing here schedules or runs anything. The host overlays the report on its
+  own resolution field by field: every field the provider omits keeps the
+  host-resolved value, and without a provider the response is unchanged.
+  Phases may carry their own `cron`; `scheduled` sets the page's
+  managed-cron marker. A phase that runs on an event rather than a timer
+  reports `cron: ""` so it inherits no expression it does not follow, and
+  `lastRunAtMs` so the scene can show when it last ran. The provider is
+  consulted whether or not the plugin registers a search runtime. It must not
+  throw to signal absence: return `null`, and the host treats a throw or a
+  malformed report the same way, with a warning.
 - A memory runtime that can return session-transcript hits should implement
   `runtime.authorizeSearchHits(...)`. The host calls this hook before raw search
   hits reach caller-visible surfaces and supplies the requesting agent, session

@@ -91,6 +91,7 @@ type DreamingPhaseInfo = {
   enabled: boolean;
   cron: string;
   nextRunAtMs?: number;
+  lastRunAtMs?: number;
 };
 
 type DreamingProps = {
@@ -347,12 +348,23 @@ function flattenDiaryBody(body: string): string[] {
   );
 }
 
-function formatPhaseNextRun(nextRunAtMs?: number): string {
-  if (!nextRunAtMs) {
-    return "—";
+function formatPhaseTime(atMs: number): string {
+  return new Date(atMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/**
+ * What the phase chip shows: the next scheduled run, or — for a phase that
+ * runs on an event rather than a timer and so has no next run — when it last
+ * ran. A dash only when neither is known.
+ */
+function formatPhaseRun(phase?: DreamingPhaseInfo): string {
+  if (phase?.nextRunAtMs) {
+    return formatPhaseTime(phase.nextRunAtMs);
   }
-  const d = new Date(nextRunAtMs);
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (phase?.lastRunAtMs) {
+    return t("dreaming.phase.lastRun", { time: formatPhaseTime(phase.lastRunAtMs) });
+  }
+  return "—";
 }
 
 function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
@@ -425,7 +437,7 @@ function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
             const phase = props.phases?.[phaseId];
             const hasPhaseStatus = phase !== undefined;
             const enabled = phase?.enabled === true;
-            const nextRun = formatPhaseNextRun(phase?.nextRunAtMs);
+            const nextRun = formatPhaseRun(phase);
             const label = t(DREAM_PHASE_LABEL_KEYS[phaseId]);
             const status = !hasPhaseStatus ? "—" : enabled ? nextRun : t("dreaming.phase.off");
             return html`

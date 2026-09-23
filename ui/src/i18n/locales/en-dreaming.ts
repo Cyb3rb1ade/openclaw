@@ -47,6 +47,7 @@ const enDreaming = {
       deep: "Deep",
       rem: "Rem",
       off: "off",
+      lastRun: "last {time}",
     },
     advanced: {
       eyebrow: "Review",
