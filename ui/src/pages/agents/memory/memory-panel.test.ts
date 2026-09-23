@@ -27,6 +27,7 @@ type TestMemoryPanel = HTMLElement & {
   toggleConfirmOpen: boolean;
   toggleConfirmLoading: boolean;
   pendingEnabled: boolean | null;
+  confirmToggle: () => Promise<void>;
   applyAgentId: () => void;
   applyGatewaySnapshot: (snapshot: ApplicationGatewaySnapshot) => void;
   loadAll: () => Promise<void>;
@@ -418,6 +419,28 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(container.querySelector(".dreaming-header-controls")?.textContent).toContain(
       "runs its own dreaming",
     );
+  });
+
+  it("closes the confirmation without writing when the owner's report arrives meanwhile", async () => {
+    const request = vi.fn(async () => ({}));
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = contextWithGateway({ request } as unknown as GatewayBrowserClient, true, {
+      plugins: { slots: { memory: "memory-core" } },
+    });
+    page.agentId = "main";
+    page.pendingEnabled = true;
+    page.toggleConfirmOpen = true;
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedEnabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+
+    await page.confirmToggle();
+
+    expect(request).not.toHaveBeenCalled();
+    expect(page.toggleConfirmLoading).toBe(false);
+    expect(page.toggleConfirmOpen).toBe(false);
+    expect(page.pendingEnabled).toBeNull();
   });
 
   it("keeps the toggle usable when the slot owner reports nothing", () => {

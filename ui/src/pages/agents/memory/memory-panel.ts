@@ -294,6 +294,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
 
   private setEnabled(enabled: boolean, dreamingOn: boolean) {
     if (
+      this.ownerRunsDreaming() ||
       !canCallDreamingMethod(this.dreaming, "config.patch", "operator.admin") ||
       this.dreaming.dreamingModeSaving ||
       this.toggleConfirmLoading ||
@@ -316,7 +317,18 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     this.dreaming.dreamingStatusError = null;
   }
 
+  /** A slot owner that reports its own dreaming controls it; the host toggle stays locked. */
+  private ownerRunsDreaming(): boolean {
+    return typeof this.dreaming.dreamingStatus?.reportedEnabled === "boolean";
+  }
+
   private async confirmToggle() {
+    // The owner's report can arrive while the confirmation is already open.
+    if (this.ownerRunsDreaming()) {
+      this.toggleConfirmOpen = false;
+      this.pendingEnabled = null;
+      return;
+    }
     const enabled = this.pendingEnabled;
     if (
       enabled == null ||
