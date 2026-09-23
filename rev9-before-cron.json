@@ -1,0 +1,13 @@
+[
+  {
+    "name": "Memory Dreaming Promotion",
+    "declarationKey": "memory-core:memory-dreaming-promotion",
+    "enabled": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "15 1 * * *",
+      "tz": "Europe/Berlin"
+    },
+    "nextRunAtMs": 1790205300000
+  }
+]
