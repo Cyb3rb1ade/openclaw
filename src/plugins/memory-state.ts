@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { asOptionalRecord } from "@openclaw/normalization-core/record-coerce";
 import { filterStringEntries } from "@openclaw/normalization-core/string-normalization";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
@@ -452,10 +453,10 @@ function isValidDreamingPhaseStatus(value: unknown): boolean {
   if (value === undefined) {
     return true;
   }
-  if (typeof value !== "object" || value === null) {
+  const phase = asOptionalRecord(value);
+  if (!phase) {
     return false;
   }
-  const phase = value as Record<string, unknown>;
   return (
     (phase.enabled === undefined || typeof phase.enabled === "boolean") &&
     (phase.cron === undefined || typeof phase.cron === "string") &&
