@@ -229,6 +229,13 @@ const CORE_RELOAD_POLICIES: ReloadPolicy[] = [
     kind: "hot",
     actions: ["reconcileSystemJobs"],
   },
+  // Turning a third-party memory slot owner's dreaming off unloads the
+  // memory-core sidecar, which can then no longer remove its own cron jobs.
+  {
+    prefixes: ["plugins.slots.memory", "plugins.entries.*.config.dreaming"],
+    kind: "hot",
+    actions: ["reloadPlugins", "disposeMcpRuntimes", "reconcileSystemJobs"],
+  },
   {
     prefixes: ["agents.defaults.decisionModel"],
     kind: "hot",

@@ -6,6 +6,7 @@ import {
   LEGACY_MEMORY_REM_DREAMING_CRON_NAME as LEGACY_REM_SLEEP_CRON_NAME,
   LEGACY_MEMORY_REM_DREAMING_CRON_TAG as LEGACY_REM_SLEEP_CRON_TAG,
   LEGACY_MEMORY_REM_DREAMING_EVENT_TEXT as LEGACY_REM_SLEEP_EVENT_TEXT,
+  MANAGED_MEMORY_DREAMING_CRON_DECLARATION_KEY as MANAGED_DREAMING_DECLARATION_KEY,
   MANAGED_MEMORY_DREAMING_CRON_NAME as MANAGED_DREAMING_CRON_NAME,
   MANAGED_MEMORY_DREAMING_CRON_TAG as MANAGED_DREAMING_CRON_TAG,
   MEMORY_DREAMING_SYSTEM_EVENT_TEXT as DREAMING_SYSTEM_EVENT_TEXT,
@@ -18,8 +19,6 @@ import {
   normalizeOptionalString,
 } from "openclaw/plugin-sdk/string-coerce-runtime";
 import { formatErrorMessage } from "./dreaming-shared.js";
-
-const MANAGED_DREAMING_DECLARATION_KEY = "memory-core:memory-dreaming-promotion";
 
 type Logger = Pick<OpenClawPluginApi["logger"], "info" | "warn" | "error">;
 type ShortTermPromotionDreamingConfig = ReturnType<typeof resolveMemoryDeepDreamingConfig>;
