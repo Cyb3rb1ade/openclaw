@@ -71,7 +71,7 @@ function isMemoryCoreDreamingJob(job: CronJob): boolean {
  * memory slot and the dreaming sidecar is not due, so the loader does not load
  * memory-core and its own disabled-branch cleanup can never run.
  */
-export function isMemoryCoreDreamingOrphaned(cfg: OpenClawConfig): boolean {
+function isMemoryCoreDreamingOrphaned(cfg: OpenClawConfig): boolean {
   const memorySlot = normalizeOptionalString(cfg.plugins?.slots?.memory);
   const normalizedSlot = normalizeLowercaseStringOrEmpty(memorySlot);
   if (!normalizedSlot || normalizedSlot === DEFAULT_MEMORY_DREAMING_PLUGIN_ID) {
@@ -117,7 +117,7 @@ export async function reconcileOrphanedMemoryDreamingJobs(params: {
         job.id,
         params.commitGuard ? { commitGuard: params.commitGuard } : undefined,
       );
-      if (result.removed === true) {
+      if (result.removed) {
         removed += 1;
       }
     } catch (error) {

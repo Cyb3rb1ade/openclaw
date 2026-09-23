@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import type { CronJob } from "../cron/types.js";
-import {
-  isMemoryCoreDreamingOrphaned,
-  reconcileOrphanedMemoryDreamingJobs,
-} from "./server-cron-memory-dreaming-jobs.js";
+import { reconcileOrphanedMemoryDreamingJobs } from "./server-cron-memory-dreaming-jobs.js";
 
 function job(overrides: Partial<CronJob> & { id: string }): CronJob {
   return {
@@ -67,19 +64,25 @@ function fakeCron(jobs: CronJob[]) {
 
 const logger = { warn: vi.fn(), info: vi.fn() };
 
-describe("isMemoryCoreDreamingOrphaned", () => {
-  it("is orphaned only while a third-party slot owner has dreaming turned off", () => {
-    expect(isMemoryCoreDreamingOrphaned(thirdPartyOwner(false))).toBe(true);
+describe("when memory-core's dreaming jobs count as orphaned", () => {
+  async function inventoried(cfg: OpenClawConfig): Promise<boolean> {
+    const cron = fakeCron([managedPromotion]);
+    await reconcileOrphanedMemoryDreamingJobs({ cron: cron as never, cfg, logger });
+    return cron.list.mock.calls.length > 0;
+  }
+
+  it("only while a third-party slot owner has dreaming turned off", async () => {
+    expect(await inventoried(thirdPartyOwner(false))).toBe(true);
     // The loader activates memory-core as sidecar here; it reconciles its own jobs.
-    expect(isMemoryCoreDreamingOrphaned(thirdPartyOwner(true))).toBe(false);
+    expect(await inventoried(thirdPartyOwner(true))).toBe(false);
     // Dreaming defaults to enabled, so an unset flag also keeps the sidecar.
-    expect(isMemoryCoreDreamingOrphaned(thirdPartyOwner(undefined))).toBe(false);
+    expect(await inventoried(thirdPartyOwner(undefined))).toBe(false);
   });
 
-  it("leaves memory-core alone when it owns the memory slot", () => {
-    expect(isMemoryCoreDreamingOrphaned({} as OpenClawConfig)).toBe(false);
+  it("never while memory-core owns the memory slot", async () => {
+    expect(await inventoried({} as OpenClawConfig)).toBe(false);
     expect(
-      isMemoryCoreDreamingOrphaned({
+      await inventoried({
         plugins: {
           slots: { memory: "memory-core" },
           entries: { "memory-core": { config: { dreaming: { enabled: false } } } },
