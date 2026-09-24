@@ -229,15 +229,15 @@ const CORE_RELOAD_POLICIES: ReloadPolicy[] = [
     kind: "hot",
     actions: ["reconcileSystemJobs"],
   },
-  // Turning a third-party memory slot owner's dreaming off, or disabling or
-  // denying memory-core, unloads the memory-core sidecar, which can then no
-  // longer remove its own cron jobs.
+  // Turning a third-party memory slot owner's dreaming off, denying
+  // memory-core or disabling plugins unloads the memory-core sidecar, which can
+  // then no longer remove its own cron jobs. Per-plugin enabled toggles are
+  // handled in buildGatewayReloadPlan.
   {
     prefixes: [
       "plugins.enabled",
       "plugins.deny",
       "plugins.slots.memory",
-      "plugins.entries.memory-core.enabled",
       "plugins.entries.*.config.dreaming",
     ],
     kind: "hot",
@@ -512,6 +512,8 @@ function isInspectableChannelAccount(params: {
   }
 }
 
+const PLUGIN_ENABLED_PATH = /^plugins\.entries\.[^.]+\.enabled$/;
+
 export function buildGatewayReloadPlan(
   changedPaths: string[],
   options: GatewayReloadPlanOptions = {},
@@ -618,6 +620,14 @@ export function buildGatewayReloadPlan(
   // A wholesale restart covers its account targets and must run only once.
   for (const channel of plan.restartChannels) {
     restartChannelAccounts.delete(channel);
+  }
+
+  // Disabling a plugin can unload the memory-core dreaming sidecar: memory-core
+  // itself or the memory slot owner it runs beside. A prefix rule for
+  // plugins.entries.*.enabled would outrank per-channel plugin policies, so the
+  // system-job pass that removes its orphaned cron jobs is requested here.
+  if (plan.reloadPlugins && plan.hotReasons.some((path) => PLUGIN_ENABLED_PATH.test(path))) {
+    plan.reconcileSystemJobs = true;
   }
 
   return plan;

@@ -5,11 +5,16 @@ import { SYSTEM_JOB_RECONCILERS } from "./server-cron-system-job-reconcilers.js"
 
 describe("memory dreaming reload plan", () => {
   it.each([
+    "plugins.enabled",
+    "plugins.deny",
     "plugins.slots.memory",
+    "plugins.entries.memory-core.enabled",
+    // The slot owner itself: disabling it also makes the loader refuse the sidecar.
+    "plugins.entries.memory-lancedb-namespaced.enabled",
     "plugins.entries.memory-lancedb-namespaced.config.dreaming.enabled",
   ])("reloads plugins and reconciles system jobs when %s changes", (path) => {
-    // Turning a third-party slot owner's dreaming off unloads the memory-core
-    // sidecar; only the system-job pass can remove its cron job afterwards.
+    // Each of these can unload the memory-core sidecar; only the system-job
+    // pass can remove its cron job afterwards.
     const plan = buildGatewayReloadPlan([path]);
 
     expect(plan).toMatchObject({
@@ -22,6 +27,13 @@ describe("memory dreaming reload plan", () => {
 
   it("runs the orphaned dreaming job pass on every cron start and system-job reload", () => {
     expect(SYSTEM_JOB_RECONCILERS).toContain(reconcileOrphanedMemoryDreamingJobs);
+  });
+
+  it("requests the pass for any plugin's enabled flag without a gateway restart", () => {
+    const plan = buildGatewayReloadPlan(["plugins.entries.telegram.enabled"]);
+
+    expect(plan).toMatchObject({ reloadPlugins: true, reconcileSystemJobs: true });
+    expect(plan.restartGateway).toBe(false);
   });
 
   it("keeps other plugin config changes on the plain plugin reload", () => {

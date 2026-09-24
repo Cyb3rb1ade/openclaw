@@ -109,6 +109,11 @@ describe("when memory-core's dreaming jobs count as orphaned", () => {
     expect(await inventoried(thirdPartyOwner(true, {}, { enabled: false }))).toBe(true);
     expect(await inventoried(thirdPartyOwner(true, { deny: ["memory-core"] }))).toBe(true);
     expect(await inventoried(thirdPartyOwner(true, { enabled: false }))).toBe(true);
+    // The slot owner itself disabled: the loader refuses the sidecar beside it.
+    const ownerDisabled = thirdPartyOwner(true);
+    const ownerEntries = ownerDisabled.plugins?.entries as Record<string, Record<string, unknown>>;
+    ownerEntries["memory-lancedb-namespaced"].enabled = false;
+    expect(await inventoried(ownerDisabled)).toBe(true);
   });
 
   it("never without the manifests the loader decided against", async () => {
