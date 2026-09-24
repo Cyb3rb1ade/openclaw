@@ -584,6 +584,38 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(page.querySelector<HTMLButtonElement>(".dreams__phase-toggle")?.disabled).toBe(true);
   });
 
+  it("locks turning on for a phases-only report and declines the write", async () => {
+    const request = vi.fn(async () => ({}));
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = contextWithGateway({ request } as unknown as GatewayBrowserClient, true, {
+      plugins: {
+        slots: { memory: "memory-core" },
+        entries: { "memory-core": { config: { dreaming: { enabled: false } } } },
+      },
+    });
+    page.agentId = "main";
+    // The owner reported phases but no `enabled`: still its sweep, still locked.
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedByProvider: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    const container = document.createElement("div");
+
+    render(page.render(), container);
+
+    const toggle = container.querySelector<HTMLButtonElement>(".dreams__phase-toggle");
+    expect(toggle?.disabled).toBe(true);
+    expect(toggle?.textContent).toContain("Off");
+
+    page.pendingEnabled = true;
+    page.toggleConfirmOpen = true;
+    await page.confirmToggle();
+
+    expect(request).not.toHaveBeenCalled();
+    expect(page.toggleConfirmOpen).toBe(false);
+    expect(page.pendingEnabled).toBeNull();
+  });
+
   it("keeps the toggle usable when the slot owner reports nothing", () => {
     const context = contextWithGateway({} as GatewayBrowserClient, true, {
       plugins: {

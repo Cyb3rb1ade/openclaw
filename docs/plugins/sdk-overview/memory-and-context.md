@@ -49,6 +49,9 @@ engine unchanged, and tries that engine again on the next logical turn.
   nothing here schedules or runs anything. The host overlays the report on its
   own resolution field by field: every field the provider omits keeps the
   host-resolved value, and without a provider the response is unchanged.
+  Any report at all arrives as `reportedByProvider: true`, which is what
+  locks the page's switch against turning the host sweep on, so a provider
+  may omit `enabled` and report only phases or counters without unlocking it.
   Reported `enabled` arrives as `reportedEnabled` and lights the scene; the
   page's toggle keeps showing the `memory-core` configuration it writes. While
   a provider reports `enabled`, the toggle cannot turn that sweep on, which would

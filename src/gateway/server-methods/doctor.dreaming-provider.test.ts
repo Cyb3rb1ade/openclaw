@@ -49,6 +49,7 @@ describe("doctor.memory.status with a memory slot owner's dreaming provider", ()
     expect(payload.embedding).toEqual({ ok: false, error: "memory search unavailable" });
     const dreaming = payload.dreaming as Record<string, any>;
     expect(dreaming.reportedEnabled).toBe(true);
+    expect(dreaming.reportedByProvider).toBe(true);
     expect(dreaming.timezone).toBe("Europe/Berlin");
     expect(dreaming.phases.rem).toMatchObject({
       cron: "15 1 * * *",
@@ -110,6 +111,21 @@ describe("doctor.memory.status with a memory slot owner's dreaming provider", ()
     expect(phases.rem).toMatchObject({ cron: "15 1 * * *", nextRunAtMs: 2_000 });
     // A phase the provider does not report keeps the host resolution.
     expect(phases.deep).toMatchObject({ managedCronPresent: true, nextRunAtMs: 9_000 });
+  });
+
+  it("marks a phases-only report as provider-owned without inventing enablement", async () => {
+    getMemorySearchManager.mockResolvedValue({ manager: null, error: "memory search unavailable" });
+    resolveActiveMemoryDreamingStatus.mockResolvedValueOnce({
+      phases: { rem: { enabled: true, scheduled: true, cron: "15 1 * * *" } },
+    });
+    const respond = vi.fn();
+
+    await invokeDoctorMemory("doctor.memory.status", respond, { params: {} });
+
+    const dreaming = (respondPayload(respond) as Record<string, any>).dreaming;
+    // Presence is what locks the page's switch; enablement stays unknown.
+    expect(dreaming.reportedByProvider).toBe(true);
+    expect(dreaming).not.toHaveProperty("reportedEnabled");
   });
 
   it("keeps the no-manager response unchanged when no dreaming provider reports", async () => {

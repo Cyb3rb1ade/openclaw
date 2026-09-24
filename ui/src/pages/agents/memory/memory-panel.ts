@@ -112,6 +112,15 @@ function readWikiPagePreview(value: unknown, lookup: string): WikiPagePreview {
   };
 }
 
+/**
+ * Whether the memory slot owner reports its own dreaming. Any report counts —
+ * a provider may omit `enabled` and report only phases or counters — so the
+ * host switch is locked on presence, not on the optional enablement flag.
+ */
+function ownerReportsDreaming(status: DreamingState["dreamingStatus"] | null): boolean {
+  return status?.reportedByProvider === true || typeof status?.reportedEnabled === "boolean";
+}
+
 class AgentMemoryPanel extends OpenClawLightDomElement {
   @consume({ context: applicationContext, subscribe: true })
   private context!: ApplicationContext;
@@ -319,7 +328,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
 
   /** A slot owner that reports its own dreaming controls it. */
   private ownerRunsDreaming(): boolean {
-    return typeof this.dreaming.dreamingStatus?.reportedEnabled === "boolean";
+    return ownerReportsDreaming(this.dreaming.dreamingStatus);
   }
 
   /**
@@ -448,7 +457,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     // writes the host setting, which such an owner does not follow and which
     // starts memory-core's own sweep beside it, so turning it on is locked.
     // Turning an already running host sweep off stays possible.
-    const ownerDreams = typeof dreamingStatus?.reportedEnabled === "boolean";
+    const ownerDreams = ownerReportsDreaming(dreamingStatus);
     const ownerLocksToggle = ownerDreams && !dreamingOn;
     const ownerDreamsHint = ownerDreams
       ? t(dreamingOn ? "dreaming.header.ownerManagedHostOn" : "dreaming.header.ownerManaged", {

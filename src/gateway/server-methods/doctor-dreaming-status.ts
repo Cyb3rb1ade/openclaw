@@ -66,6 +66,12 @@ export type DoctorMemoryDreamingPayload = DoctorMemoryDreamingConfigPayload &
      * page's switch writes.
      */
     reportedEnabled?: boolean;
+    /**
+     * Whether the memory slot owner reported anything at all. A provider may
+     * validly omit `enabled` and report only phases or counters; the page still
+     * has to treat the sweep as owner-run and lock the host switch.
+     */
+    reportedByProvider?: boolean;
   };
 
 export type ManagedDreamingCronStatus = {
@@ -82,11 +88,12 @@ export type ManagedDreamingCronStatus = {
  */
 function applyReportedDreamingTop(
   reported: MemoryPluginDreamingStatus | null,
-): Pick<DoctorMemoryDreamingPayload, "timezone" | "reportedEnabled"> {
+): Pick<DoctorMemoryDreamingPayload, "timezone" | "reportedEnabled" | "reportedByProvider"> {
   if (!reported) {
     return {};
   }
   return {
+    reportedByProvider: true,
     ...(reported.enabled === undefined ? {} : { reportedEnabled: reported.enabled }),
     ...(reported.timezone === undefined ? {} : { timezone: reported.timezone }),
   };
