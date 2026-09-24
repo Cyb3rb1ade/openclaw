@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildGatewayReloadPlan } from "./config-reload-plan.js";
+import { reconcileOrphanedMemoryDreamingJobs } from "./server-cron-memory-dreaming-jobs.js";
+import { SYSTEM_JOB_RECONCILERS } from "./server-cron-system-job-reconcilers.js";
 
 describe("memory dreaming reload plan", () => {
   it.each([
@@ -16,6 +18,10 @@ describe("memory dreaming reload plan", () => {
       reloadPlugins: true,
       reconcileSystemJobs: true,
     });
+  });
+
+  it("runs the orphaned dreaming job pass on every cron start and system-job reload", () => {
+    expect(SYSTEM_JOB_RECONCILERS).toContain(reconcileOrphanedMemoryDreamingJobs);
   });
 
   it("keeps other plugin config changes on the plain plugin reload", () => {

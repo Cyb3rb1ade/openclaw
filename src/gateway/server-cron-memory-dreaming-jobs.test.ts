@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import type { CronJob } from "../cron/types.js";
+import { createPluginManifestRecordFixture } from "../plugins/plugin-metadata.test-support.js";
 import { reconcileOrphanedMemoryDreamingJobs } from "./server-cron-memory-dreaming-jobs.js";
 
 function job(overrides: Partial<CronJob> & { id: string }): CronJob {
@@ -40,11 +41,17 @@ const pluginOwnJob = job({ id: "plugin-rem", name: "PLUR1BUS rem-dream (main)" }
 // Same display name as memory-core's job, but not memory-core's.
 const lookalike = job({ id: "lookalike", name: "Memory Dreaming Promotion", description: "mine" });
 
-function thirdPartyOwner(dreamingEnabled: boolean | undefined): OpenClawConfig {
+function thirdPartyOwner(
+  dreamingEnabled: boolean | undefined,
+  plugins: Record<string, unknown> = {},
+  memoryCoreEntry: Record<string, unknown> = {},
+): OpenClawConfig {
   return {
     plugins: {
+      ...plugins,
       slots: { memory: "memory-lancedb-namespaced" },
       entries: {
+        "memory-core": memoryCoreEntry,
         "memory-lancedb-namespaced": {
           config: dreamingEnabled === undefined ? {} : { dreaming: { enabled: dreamingEnabled } },
         },
@@ -52,6 +59,19 @@ function thirdPartyOwner(dreamingEnabled: boolean | undefined): OpenClawConfig {
     },
   } as OpenClawConfig;
 }
+
+// The manifests the loader admitted against: both are memory-kind plugins.
+const manifestRegistry = {
+  plugins: [
+    createPluginManifestRecordFixture({ id: "memory-core", kind: "memory" }),
+    createPluginManifestRecordFixture({
+      id: "memory-lancedb-namespaced",
+      kind: "memory",
+      origin: "global",
+    }),
+  ],
+  diagnostics: [],
+};
 
 function fakeCron(jobs: CronJob[]) {
   const store = new Map(jobs.map((entry) => [entry.id, entry]));
@@ -67,7 +87,12 @@ const logger = { warn: vi.fn(), info: vi.fn() };
 describe("when memory-core's dreaming jobs count as orphaned", () => {
   async function inventoried(cfg: OpenClawConfig): Promise<boolean> {
     const cron = fakeCron([managedPromotion]);
-    await reconcileOrphanedMemoryDreamingJobs({ cron: cron as never, cfg, logger });
+    await reconcileOrphanedMemoryDreamingJobs({
+      cron: cron as never,
+      cfg,
+      logger,
+      manifestRegistry,
+    });
     return cron.list.mock.calls.length > 0;
   }
 
@@ -77,6 +102,24 @@ describe("when memory-core's dreaming jobs count as orphaned", () => {
     expect(await inventoried(thirdPartyOwner(true))).toBe(false);
     // Dreaming defaults to enabled, so an unset flag also keeps the sidecar.
     expect(await inventoried(thirdPartyOwner(undefined))).toBe(false);
+  });
+
+  it("whenever the loader refuses memory-core as sidecar, not only on the dreaming flag", async () => {
+    // Dreaming stays on in all three; memory-core is unloaded anyway.
+    expect(await inventoried(thirdPartyOwner(true, {}, { enabled: false }))).toBe(true);
+    expect(await inventoried(thirdPartyOwner(true, { deny: ["memory-core"] }))).toBe(true);
+    expect(await inventoried(thirdPartyOwner(true, { enabled: false }))).toBe(true);
+  });
+
+  it("never without the manifests the loader decided against", async () => {
+    const cron = fakeCron([managedPromotion]);
+    await reconcileOrphanedMemoryDreamingJobs({
+      cron: cron as never,
+      cfg: thirdPartyOwner(false),
+      logger,
+      manifestRegistry: undefined,
+    });
+    expect(cron.list).not.toHaveBeenCalled();
   });
 
   it("never while memory-core owns the memory slot", async () => {
@@ -106,6 +149,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
       cron: cron as never,
       cfg: thirdPartyOwner(false),
       logger,
+      manifestRegistry,
     });
 
     expect(result).toEqual({ ok: true });
@@ -120,6 +164,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
       cron: cron as never,
       cfg: thirdPartyOwner(true),
       logger,
+      manifestRegistry,
     });
 
     expect(cron.list).not.toHaveBeenCalled();
@@ -134,6 +179,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
         cron: listFails as never,
         cfg: thirdPartyOwner(false),
         logger,
+        manifestRegistry,
       }),
     ).resolves.toEqual({ ok: false });
 
@@ -144,6 +190,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
         cron: removeFails as never,
         cfg: thirdPartyOwner(false),
         logger,
+        manifestRegistry,
       }),
     ).resolves.toEqual({ ok: false });
     // One failure does not stop the rest of the family from being removed.
@@ -162,6 +209,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
         cron: cron as never,
         cfg: thirdPartyOwner(false),
         logger,
+        manifestRegistry,
         commitGuard,
       }),
     ).rejects.toBe(superseded);

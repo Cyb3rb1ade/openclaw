@@ -18,8 +18,12 @@ import {
   MANAGED_MEMORY_DREAMING_CRON_NAME,
   MANAGED_MEMORY_DREAMING_CRON_TAG,
   MEMORY_DREAMING_SYSTEM_EVENT_TEXT,
-  resolveMemoryDreamingSidecarPluginId,
 } from "../memory-host-sdk/dreaming.js";
+import { createPluginActivationSource, normalizePluginsConfig } from "../plugins/config-state.js";
+import { resolveAuthorizedDreamingSidecar } from "../plugins/loader-shared.js";
+import type { PluginManifestRegistry } from "../plugins/manifest-registry.js";
+import { getActivePluginRegistry } from "../plugins/runtime.js";
+import { getPluginRuntimeLoadContext } from "../plugins/runtime/load-context.js";
 import type { GatewayCronServiceContract } from "./server-cron-contract.js";
 
 type MemoryDreamingJobCron = Pick<GatewayCronServiceContract, "list" | "remove">;
@@ -66,26 +70,51 @@ function isMemoryCoreDreamingJob(job: CronJob): boolean {
   );
 }
 
+function activeManifestRegistry(): PluginManifestRegistry | undefined {
+  const registry = getActivePluginRegistry();
+  return registry ? getPluginRuntimeLoadContext(registry)?.manifestRegistry : undefined;
+}
+
 /**
  * Whether memory-core's dreaming jobs are orphaned: another plugin owns the
- * memory slot and the dreaming sidecar is not due, so the loader does not load
- * memory-core and its own disabled-branch cleanup can never run.
+ * memory slot and the loader does not admit memory-core as the dreaming
+ * sidecar, so memory-core is not loaded and its own disabled-branch cleanup can
+ * never run. Admission is the loader's own decision (dreaming flag, plugins
+ * disabled, memory-core denied or disabled, slot owner inactive), not the
+ * dreaming flag alone. Without a manifest registry the answer is unknown, and
+ * nothing is removed.
  */
-function isMemoryCoreDreamingOrphaned(cfg: OpenClawConfig): boolean {
-  const memorySlot = normalizeOptionalString(cfg.plugins?.slots?.memory);
+function isMemoryCoreDreamingOrphaned(
+  cfg: OpenClawConfig,
+  manifestRegistry: PluginManifestRegistry | undefined,
+): boolean {
+  const normalized = normalizePluginsConfig(cfg.plugins);
+  const memorySlot = normalized.slots.memory;
   const normalizedSlot = normalizeLowercaseStringOrEmpty(memorySlot);
   if (!normalizedSlot || normalizedSlot === DEFAULT_MEMORY_DREAMING_PLUGIN_ID) {
     // memory-core owns the slot and reconciles its own jobs.
     return false;
   }
-  return resolveMemoryDreamingSidecarPluginId({ cfg, memorySlot }) === null;
+  if (!manifestRegistry) {
+    return false;
+  }
+  return (
+    resolveAuthorizedDreamingSidecar({
+      cfg,
+      normalized,
+      activationSource: createPluginActivationSource({ config: cfg, plugins: normalized }),
+      manifestRegistry,
+      memorySlot,
+    }) === null
+  );
 }
 
 /**
  * Removes memory-core's managed dreaming cron jobs once memory-core stops being
  * loaded as the dreaming sidecar. Turning `dreaming.enabled` off on a
- * third-party slot owner unloads memory-core, and dispose only clears timers, so
- * without this pass its promotion job keeps running beside the slot owner.
+ * third-party slot owner, or disabling or denying memory-core, unloads it, and
+ * dispose only clears timers, so without this pass its promotion job keeps
+ * running beside the slot owner.
  */
 export async function reconcileOrphanedMemoryDreamingJobs(params: {
   cron: MemoryDreamingJobCron;
@@ -95,8 +124,12 @@ export async function reconcileOrphanedMemoryDreamingJobs(params: {
     info?: (obj: unknown, msg?: string) => void;
   };
   commitGuard?: () => void;
+  /** Defaults to the active plugin registry's manifests, the ones the loader admitted against. */
+  manifestRegistry?: PluginManifestRegistry;
 }): Promise<{ ok: boolean }> {
-  if (!isMemoryCoreDreamingOrphaned(params.cfg)) {
+  if (
+    !isMemoryCoreDreamingOrphaned(params.cfg, params.manifestRegistry ?? activeManifestRegistry())
+  ) {
     return { ok: true };
   }
   let jobs: CronJob[];
