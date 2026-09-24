@@ -456,7 +456,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     // lights the scene only when a phase actually runs, so a counters-only
     // report or one with every phase disabled reads as idle.
     const reportedPhaseRunning = Object.values(dreamingStatus?.phases ?? {}).some(
-      (phase) => phase?.enabled === true && phase?.managedCronPresent === true,
+      (phase) => phase.enabled && phase.managedCronPresent,
     );
     const dreamingActive =
       dreamingStatus?.reportedEnabled ??
