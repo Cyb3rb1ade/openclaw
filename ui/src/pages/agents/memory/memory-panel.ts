@@ -452,7 +452,11 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     const dreamingOn = dreamingStatus?.enabled ?? configuredDreaming.enabled;
     // The toggle stays bound to the configuration it writes; a slot owner that
     // dreams on its own only lights the scene.
-    const dreamingActive = dreamingStatus?.reportedEnabled ?? dreamingOn;
+    // Same rule as the Settings schedule: a report without a top-level `enabled`
+    // still means the owner runs its dreaming.
+    const dreamingActive =
+      dreamingStatus?.reportedEnabled ??
+      (dreamingStatus?.reportedByProvider === true || dreamingOn);
     // A slot owner that reports its own dreaming runs it itself. The toggle
     // writes the host setting, which such an owner does not follow and which
     // starts memory-core's own sweep beside it, so turning it on is locked.

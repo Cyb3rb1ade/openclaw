@@ -616,6 +616,27 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(page.pendingEnabled).toBeNull();
   });
 
+  it("lights the scene for a phases-only owner report while the host switch is off", () => {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, {
+      plugins: {
+        slots: { memory: "memory-core" },
+        entries: { "memory-core": { config: { dreaming: { enabled: false } } } },
+      },
+    });
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = context;
+    page.agentId = "main";
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedByProvider: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    const container = document.createElement("div");
+
+    render(page.render(), container);
+
+    expect(container.querySelector(".dreams__status-label")?.textContent).toMatch(/active/i);
+  });
+
   it("keeps the toggle usable when the slot owner reports nothing", () => {
     const context = contextWithGateway({} as GatewayBrowserClient, true, {
       plugins: {
