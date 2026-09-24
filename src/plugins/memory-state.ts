@@ -466,12 +466,6 @@ function isValidDreamingPhaseStatus(value: unknown): boolean {
   );
 }
 
-/**
- * Asks the memory slot owner how its own dreaming is scheduled and how far
- * consolidation has got. Returns `null` when no provider is registered, when it
- * declines, or when it misbehaves — callers then keep memory-core's resolution,
- * so a third-party provider can never blank out the page.
- */
 const DREAMING_STATS_NUMBER_KEYS = ["shortTermCount", "promotedTotal", "promotedToday"] as const;
 
 /**
@@ -501,6 +495,12 @@ function isValidDreamingStatusTop(report: MemoryPluginDreamingStatus): boolean {
   return stats.lastPromotedAt === undefined || typeof stats.lastPromotedAt === "string";
 }
 
+/**
+ * Asks the memory slot owner how its own dreaming is scheduled and how far
+ * consolidation has got. Returns `null` when no provider is registered, when it
+ * declines, or when it misbehaves — callers then keep memory-core's resolution,
+ * so a third-party provider can never blank out the page.
+ */
 export async function resolveActiveMemoryDreamingStatus(params: {
   cfg: OpenClawConfig;
   agentId: string;
