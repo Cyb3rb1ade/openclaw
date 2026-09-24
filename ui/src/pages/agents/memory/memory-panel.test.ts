@@ -616,7 +616,7 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(page.pendingEnabled).toBeNull();
   });
 
-  it("lights the scene for a phases-only owner report while the host switch is off", () => {
+  function renderOwnerReport(status: Record<string, unknown>) {
     const context = contextWithGateway({} as GatewayBrowserClient, true, {
       plugins: {
         slots: { memory: "memory-core" },
@@ -629,12 +629,37 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     page.dreaming.dreamingStatus = {
       enabled: false,
       reportedByProvider: true,
+      ...status,
     } as NonNullable<DreamingState["dreamingStatus"]>;
     const container = document.createElement("div");
-
     render(page.render(), container);
+    return container.querySelector(".dreams__status-label")?.textContent ?? "";
+  }
 
-    expect(container.querySelector(".dreams__status-label")?.textContent).toMatch(/active/i);
+  it("lights the scene for a phases-only owner report with a running phase while the host switch is off", () => {
+    const label = renderOwnerReport({
+      phases: {
+        light: { enabled: false, cron: "", managedCronPresent: false },
+        rem: { enabled: true, cron: "15 1 * * *", managedCronPresent: true },
+      },
+    });
+    expect(label).toMatch(/active/i);
+  });
+
+  it("keeps the scene idle for a counters-only owner report", () => {
+    // Presence still locks the toggle, but nothing reports as running.
+    expect(renderOwnerReport({ promotedToday: 3 })).toMatch(/idle/i);
+  });
+
+  it("keeps the scene idle when every reported phase is disabled", () => {
+    const label = renderOwnerReport({
+      phases: {
+        light: { enabled: false, cron: "", managedCronPresent: false },
+        rem: { enabled: false, cron: "15 1 * * *", managedCronPresent: true },
+        deep: { enabled: true, cron: "0 4 * * *", managedCronPresent: false },
+      },
+    });
+    expect(label).toMatch(/idle/i);
   });
 
   it("keeps the toggle usable when the slot owner reports nothing", () => {

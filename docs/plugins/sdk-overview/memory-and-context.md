@@ -57,6 +57,8 @@ engine unchanged, and tries that engine again on the next logical turn.
   may omit `enabled` and report only phases or counters without unlocking it.
   Settings > Memory then schedules each reported phase by its own `enabled`
   and `scheduled`, not by the host switch.
+  Without a reported `enabled`, the Dreams scene lights only while a reported
+  phase is enabled and scheduled, so a counters-only report reads as idle.
   Reported `enabled` arrives as `reportedEnabled` and lights the scene; the
   page's toggle keeps showing the `memory-core` configuration it writes. While
   a provider reports, the toggle cannot turn that sweep on, which would
