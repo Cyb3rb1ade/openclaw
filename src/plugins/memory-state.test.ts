@@ -233,6 +233,42 @@ describe("memory plugin state", () => {
     ).resolves.toBeNull();
   });
 
+  it("rejects a report whose top-level fields have the wrong type", async () => {
+    // `enabled: "true"` would reach the page as a string and slip past its
+    // boolean-only owner lock, so the whole report is dropped.
+    for (const report of [
+      { enabled: "true" },
+      { timezone: 5 },
+      { stats: { promotedTotal: "3" } },
+      { stats: { lastPromotedAt: 1 } },
+      { stats: "none" },
+    ]) {
+      clearMemoryPluginState();
+      registerMemoryCapability("third-party-memory", {
+        dreaming: {
+          async getStatus() {
+            return report as never;
+          },
+        },
+      });
+      await expect(
+        resolveActiveMemoryDreamingStatus({ cfg: {} as never, agentId: "main" }),
+      ).resolves.toBeNull();
+    }
+
+    clearMemoryPluginState();
+    registerMemoryCapability("third-party-memory", {
+      dreaming: {
+        async getStatus() {
+          return { enabled: true, timezone: "Europe/Berlin", stats: { promotedTotal: 3 } };
+        },
+      },
+    });
+    await expect(
+      resolveActiveMemoryDreamingStatus({ cfg: {} as never, agentId: "main" }),
+    ).resolves.toEqual({ enabled: true, timezone: "Europe/Berlin", stats: { promotedTotal: 3 } });
+  });
+
   it("normalizes public memory artifacts without agent ids", async () => {
     const legacyArtifact = {
       kind: "memory-root",

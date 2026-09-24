@@ -472,6 +472,35 @@ function isValidDreamingPhaseStatus(value: unknown): boolean {
  * declines, or when it misbehaves — callers then keep memory-core's resolution,
  * so a third-party provider can never blank out the page.
  */
+const DREAMING_STATS_NUMBER_KEYS = ["shortTermCount", "promotedTotal", "promotedToday"] as const;
+
+/**
+ * The top-level report fields the host overlays without further checks. A
+ * string `enabled` would reach the page and slip past its boolean-only owner
+ * lock, so a report is rejected as a whole when any of them has the wrong type.
+ */
+function isValidDreamingStatusTop(report: MemoryPluginDreamingStatus): boolean {
+  if (report.enabled !== undefined && typeof report.enabled !== "boolean") {
+    return false;
+  }
+  if (report.timezone !== undefined && typeof report.timezone !== "string") {
+    return false;
+  }
+  if (report.stats === undefined) {
+    return true;
+  }
+  const stats = asOptionalRecord(report.stats);
+  if (!stats) {
+    return false;
+  }
+  for (const key of DREAMING_STATS_NUMBER_KEYS) {
+    if (stats[key] !== undefined && typeof stats[key] !== "number") {
+      return false;
+    }
+  }
+  return stats.lastPromotedAt === undefined || typeof stats.lastPromotedAt === "string";
+}
+
 export async function resolveActiveMemoryDreamingStatus(params: {
   cfg: OpenClawConfig;
   agentId: string;
@@ -506,6 +535,12 @@ export async function resolveActiveMemoryDreamingStatus(params: {
       !isValidDreamingPhaseStatus(phases.rem))
   ) {
     log.warn(`ignoring dreaming status from plugin "${pluginId}": malformed phases`);
+    return null;
+  }
+  if (!isValidDreamingStatusTop(reported)) {
+    log.warn(
+      `ignoring dreaming status from plugin "${pluginId}": malformed enablement, timezone or stats`,
+    );
     return null;
   }
   return reported;
