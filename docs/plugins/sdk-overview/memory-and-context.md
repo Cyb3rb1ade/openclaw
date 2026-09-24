@@ -52,9 +52,11 @@ engine unchanged, and tries that engine again on the next logical turn.
   Any report at all arrives as `reportedByProvider: true`, which is what
   locks the page's switch against turning the host sweep on, so a provider
   may omit `enabled` and report only phases or counters without unlocking it.
+  Settings > Memory then schedules each reported phase by its own `enabled`
+  and `scheduled`, not by the host switch.
   Reported `enabled` arrives as `reportedEnabled` and lights the scene; the
   page's toggle keeps showing the `memory-core` configuration it writes. While
-  a provider reports `enabled`, the toggle cannot turn that sweep on, which would
+  a provider reports, the toggle cannot turn that sweep on, which would
   dream twice, but can still turn an already running sweep off.
   Phases may carry their own `cron`; `scheduled` sets the page's
   managed-cron marker. A reported `cron` replaces the host schedule for that

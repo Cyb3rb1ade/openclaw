@@ -199,6 +199,25 @@ describe("renderMemoryOverview", () => {
     expect(phaseRows.some((row) => row.textContent?.includes("Disabled"))).toBe(false);
   });
 
+  it("schedules a phases-only owner report by each phase's own flag", () => {
+    const payload = fixturePayload();
+    if (payload.dreaming) {
+      // The owner reported phases but no top-level `enabled`; the host switch is off.
+      payload.dreaming.enabled = false;
+      payload.dreaming.reportedByProvider = true;
+      payload.dreaming.phases.light.enabled = false;
+    }
+    const container = renderOverview({ kind: "ready", payload });
+    const row = (name: string) =>
+      [...container.querySelectorAll(".settings-row")].find((entry) =>
+        entry.textContent?.includes(name),
+      );
+
+    expect(row("REM phase")?.textContent).toContain("Enabled");
+    expect(row("Deep phase")?.textContent).toContain("Enabled");
+    expect(row("Light phase")?.textContent).toContain("Disabled");
+  });
+
   it("explains the phases in sweep order and links to the dreaming guide", () => {
     const container = renderOverview({ kind: "ready", payload: fixturePayload() });
     const phaseRows = [...container.querySelectorAll(".settings-row")].filter((row) =>

@@ -155,8 +155,10 @@ function phaseScheduleDescription(
 
 function renderSchedule(dreaming: DreamingStatus) {
   // A slot owner that dreams on its own reports whether it runs; `enabled`
-  // is only the host toggle, which such an owner does not follow.
-  const running = dreaming.reportedEnabled ?? dreaming.enabled;
+  // is only the host toggle, which such an owner does not follow. A report
+  // without a top-level `enabled` leaves the decision to each phase's own flag.
+  const running =
+    dreaming.reportedEnabled ?? (dreaming.reportedByProvider === true || dreaming.enabled);
   const phases = [
     ["light", dreaming.phases.light],
     ["rem", dreaming.phases.rem],
