@@ -77,8 +77,10 @@ export function resolveMemoryCapabilityRegistration(
       };
       continue;
     }
+    // A later call that only adds providers (public artifacts, dreaming status)
+    // layers over the earlier runtime instead of replacing it.
     const preserveExisting =
-      Boolean(registration.capability.publicArtifacts) &&
+      Boolean(registration.capability.publicArtifacts || registration.capability.dreaming) &&
       !registration.capability.promptBuilder &&
       !registration.capability.flushPlanResolver &&
       !registration.capability.runtime;

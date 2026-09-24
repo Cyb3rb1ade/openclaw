@@ -42,6 +42,9 @@ engine unchanged, and tries that engine again on the next logical turn.
   artifacts still use `listActiveMemoryPublicArtifacts(...)` from the retained
   `openclaw/plugin-sdk/memory-host-core` facade until a focused public consumer
   API exists; they must not reach into another plugin's private layout.
+- `publicArtifacts` and `dreaming` may also come from a later
+  `registerMemoryCapability` call of the same plugin. Such a call layers over
+  the earlier runtime, prompt builder and flush plan instead of replacing them.
 - `registerMemoryCapability` may also expose `dreaming.getStatus({ cfg, agentId })`
   so a slot owner that runs its own consolidation can report it on the Memory
   page. This is a **reporting-only** contract: dreaming lifecycle, the managed
