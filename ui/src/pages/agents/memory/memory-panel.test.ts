@@ -584,6 +584,48 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(page.querySelector<HTMLButtonElement>(".dreams__phase-toggle")?.disabled).toBe(true);
   });
 
+  it("opens the owner-aware Off confirmation beside a reporting owner", async () => {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, {
+      plugins: {
+        slots: { memory: "memory-lancedb-namespaced" },
+        entries: { "memory-lancedb-namespaced": { config: { dreaming: { enabled: true } } } },
+      },
+    });
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = context;
+    page.agentId = "main";
+    page.loadAll = vi.fn(async () => undefined);
+    document.body.append(page);
+    await page.updateComplete;
+    page.dreaming.dreamingStatus = {
+      enabled: true,
+      reportedEnabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    page.requestUpdate();
+    await page.updateComplete;
+
+    page.querySelector<HTMLButtonElement>(".dreams__phase-toggle")?.click();
+    await page.updateComplete;
+
+    const dialog = page.querySelector("openclaw-modal-dialog");
+    expect(dialog?.textContent).toContain("Turn Off Dreaming");
+    expect(dialog?.textContent).toContain(
+      "memory-lancedb-namespaced keeps running its own dreaming",
+    );
+    expect(dialog?.textContent).toContain("stays in the cron list and keeps running");
+    expect(dialog?.textContent).not.toContain("sweep will stop");
+
+    // Without an owner report the same click opens the generic Off dialog.
+    page.dreaming.dreamingStatus = {
+      enabled: true,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    page.requestUpdate();
+    await page.updateComplete;
+    const genericDialog = page.querySelector("openclaw-modal-dialog");
+    expect(genericDialog?.textContent).toContain("sweep will stop");
+    expect(genericDialog?.textContent).not.toContain("stays in the cron list");
+  });
+
   it("locks turning on for a phases-only report and declines the write", async () => {
     const request = vi.fn(async () => ({}));
     const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;

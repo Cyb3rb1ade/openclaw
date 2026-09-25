@@ -602,6 +602,7 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
       ${renderDreamingToggleConfirmation({
         open: this.toggleConfirmOpen,
         enabling: this.pendingEnabled === true,
+        ownerPluginId: ownerDreams ? configuredDreaming.pluginId : undefined,
         loading: this.toggleConfirmLoading,
         onConfirm: () => void this.confirmToggle(),
         onCancel: () => this.cancelToggle(),

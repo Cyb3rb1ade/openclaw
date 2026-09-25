@@ -27,6 +27,8 @@ const enDreaming = {
       disableTitle: "Turn Off Dreaming for All Agents",
       disableDetail:
         "The nightly dreaming sweep will stop for every configured agent, not just this one. Memories already written stay; nothing new gets promoted. This applies right away.",
+      disableDetailOwner:
+        "{plugin} keeps running its own dreaming; this switch does not reach it. Turning it off unloads memory-core's dreaming for every configured agent, but a promotion job memory-core already scheduled stays in the cron list and keeps running until it is removed by hand or by the orphan-cron cleanup. Memories already written stay. This applies right away.",
       disableConfirm: "Turn Off Dreaming",
       saving: "Saving…",
       failed: "Could not apply change. Check your connection and try again.",
