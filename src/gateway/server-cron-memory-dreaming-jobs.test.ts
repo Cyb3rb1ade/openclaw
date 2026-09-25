@@ -38,6 +38,8 @@ const legacyLightPhase = job({
   payload: { kind: "systemEvent", text: "__openclaw_memory_core_light_sleep__" },
 });
 const pluginOwnJob = job({ id: "plugin-rem", name: "PLUR1BUS rem-dream (main)" });
+// A second canonical row, as a duplicate declaration would leave behind.
+const managedDuplicate = job({ ...managedPromotion, id: "promotion-duplicate" });
 // Same display name as memory-core's job, but not memory-core's.
 const lookalike = job({ id: "lookalike", name: "Memory Dreaming Promotion", description: "mine" });
 
@@ -140,7 +142,7 @@ describe("when memory-core's dreaming jobs count as orphaned", () => {
 });
 
 describe("reconcileOrphanedMemoryDreamingJobs", () => {
-  it("removes memory-core's dreaming jobs once the sidecar is unloaded", async () => {
+  it("removes only memory-core's canonical job once the sidecar is unloaded", async () => {
     const cron = fakeCron([
       managedPromotion,
       legacyPromotion,
@@ -157,7 +159,14 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
     });
 
     expect(result).toEqual({ ok: true });
-    expect([...cron.store.keys()].toSorted()).toEqual(["lookalike", "plugin-rem"]);
+    // Historical rows are Doctor's to repair (openclaw doctor --fix); runtime
+    // reconciliation leaves them exactly as memory-core's own disabled branch does.
+    expect([...cron.store.keys()].toSorted()).toEqual([
+      "legacy-light",
+      "legacy-promotion",
+      "lookalike",
+      "plugin-rem",
+    ]);
     expect(cron.list).toHaveBeenCalledWith({ includeDisabled: true });
   });
 
@@ -187,7 +196,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
       }),
     ).resolves.toEqual({ ok: false });
 
-    const removeFails = fakeCron([managedPromotion, legacyLightPhase]);
+    const removeFails = fakeCron([managedPromotion, managedDuplicate]);
     removeFails.remove.mockRejectedValueOnce(new Error("locked"));
     await expect(
       reconcileOrphanedMemoryDreamingJobs({
@@ -197,7 +206,7 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
         manifestRegistry,
       }),
     ).resolves.toEqual({ ok: false });
-    // One failure does not stop the rest of the family from being removed.
+    // One failure does not stop the remaining canonical rows from being removed.
     expect(removeFails.remove).toHaveBeenCalledTimes(2);
   });
 

@@ -26,6 +26,8 @@ const DEFAULT_MEMORY_DREAMING_SEPARATE_REPORTS = false;
 export const DEFAULT_MEMORY_DREAMING_FREQUENCY = "0 3 * * *";
 export const DEFAULT_MEMORY_DREAMING_PLUGIN_ID = "memory-core";
 export const MANAGED_MEMORY_DREAMING_CRON_NAME = "Memory Dreaming Promotion";
+// Same value as MANAGED_DREAMING_DECLARATION_KEY in
+// extensions/memory-core/src/dreaming-cron-contract.ts, which core cannot import.
 export const MANAGED_MEMORY_DREAMING_CRON_DECLARATION_KEY = "memory-core:memory-dreaming-promotion";
 export const MANAGED_MEMORY_DREAMING_CRON_TAG = "[managed-by=memory-core.short-term-promotion]";
 export const MEMORY_DREAMING_SYSTEM_EVENT_TEXT =

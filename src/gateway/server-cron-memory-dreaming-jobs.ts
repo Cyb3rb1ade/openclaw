@@ -1,4 +1,4 @@
-// Removes memory-core's managed dreaming cron jobs while memory-core is not loaded to own them.
+// Removes memory-core's managed dreaming cron job while memory-core is not loaded to own it.
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import {
   normalizeLowercaseStringOrEmpty,
@@ -8,16 +8,7 @@ import type { OpenClawConfig } from "../config/types.openclaw.js";
 import type { CronJob } from "../cron/types.js";
 import {
   DEFAULT_MEMORY_DREAMING_PLUGIN_ID,
-  LEGACY_MEMORY_LIGHT_DREAMING_CRON_NAME,
-  LEGACY_MEMORY_LIGHT_DREAMING_CRON_TAG,
-  LEGACY_MEMORY_LIGHT_DREAMING_EVENT_TEXT,
-  LEGACY_MEMORY_REM_DREAMING_CRON_NAME,
-  LEGACY_MEMORY_REM_DREAMING_CRON_TAG,
-  LEGACY_MEMORY_REM_DREAMING_EVENT_TEXT,
   MANAGED_MEMORY_DREAMING_CRON_DECLARATION_KEY,
-  MANAGED_MEMORY_DREAMING_CRON_NAME,
-  MANAGED_MEMORY_DREAMING_CRON_TAG,
-  MEMORY_DREAMING_SYSTEM_EVENT_TEXT,
 } from "../memory-host-sdk/dreaming.js";
 import { createPluginActivationSource, normalizePluginsConfig } from "../plugins/config-state.js";
 import { resolveAuthorizedDreamingSidecar } from "../plugins/loader-shared.js";
@@ -28,45 +19,13 @@ import type { GatewayCronServiceContract } from "./server-cron-contract.js";
 
 type MemoryDreamingJobCron = Pick<GatewayCronServiceContract, "list" | "remove">;
 
-function payloadToken(job: CronJob): string | undefined {
-  const payload = job.payload;
-  if (payload?.kind === "systemEvent") {
-    return normalizeOptionalString(payload.text);
-  }
-  if (payload?.kind === "agentTurn") {
-    return normalizeOptionalString(payload.message);
-  }
-  return undefined;
-}
-
-// Mirrors memory-core's own job family (extensions/memory-core/src/dreaming-cron.ts),
-// including the legacy per-phase jobs its disabled branch removes as well.
-function isMemoryCoreDreamingJob(job: CronJob): boolean {
-  if (
-    normalizeOptionalString(job.declarationKey) === MANAGED_MEMORY_DREAMING_CRON_DECLARATION_KEY
-  ) {
-    return true;
-  }
-  const name = normalizeOptionalString(job.name);
-  const description = normalizeOptionalString(job.description);
-  const token = payloadToken(job);
-  if (name === MANAGED_MEMORY_DREAMING_CRON_NAME) {
-    return (
-      description?.includes(MANAGED_MEMORY_DREAMING_CRON_TAG) === true ||
-      token === MEMORY_DREAMING_SYSTEM_EVENT_TEXT
-    );
-  }
-  if (
-    description?.includes(LEGACY_MEMORY_LIGHT_DREAMING_CRON_TAG) ||
-    description?.includes(LEGACY_MEMORY_REM_DREAMING_CRON_TAG)
-  ) {
-    return true;
-  }
+// Only the canonical declaration, exactly what memory-core's own disabled
+// branch removes (extensions/memory-core/src/dreaming-cron.ts). Historical,
+// legacy and ambiguous dreaming rows stay untouched: repairing them is
+// Doctor's job (openclaw doctor --fix), not runtime reconciliation's.
+function isManagedMemoryCoreDreamingJob(job: CronJob): boolean {
   return (
-    (name === LEGACY_MEMORY_LIGHT_DREAMING_CRON_NAME &&
-      token === LEGACY_MEMORY_LIGHT_DREAMING_EVENT_TEXT) ||
-    (name === LEGACY_MEMORY_REM_DREAMING_CRON_NAME &&
-      token === LEGACY_MEMORY_REM_DREAMING_EVENT_TEXT)
+    normalizeOptionalString(job.declarationKey) === MANAGED_MEMORY_DREAMING_CRON_DECLARATION_KEY
   );
 }
 
@@ -110,7 +69,7 @@ function isMemoryCoreDreamingOrphaned(
 }
 
 /**
- * Removes memory-core's managed dreaming cron jobs once memory-core stops being
+ * Removes memory-core's managed dreaming cron job once memory-core stops being
  * loaded as the dreaming sidecar. Turning `dreaming.enabled` off on a
  * third-party slot owner, or disabling or denying memory-core, unloads it, and
  * dispose only clears timers, so without this pass its promotion job keeps
@@ -142,7 +101,7 @@ export async function reconcileOrphanedMemoryDreamingJobs(params: {
   params.commitGuard?.();
   let ok = true;
   let removed = 0;
-  for (const job of jobs.filter(isMemoryCoreDreamingJob)) {
+  for (const job of jobs.filter(isManagedMemoryCoreDreamingJob)) {
     await yieldToEventLoop();
     params.commitGuard?.();
     try {
