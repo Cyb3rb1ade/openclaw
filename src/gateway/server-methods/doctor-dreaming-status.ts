@@ -135,13 +135,14 @@ function applyReportedDreamingPhase<
 }
 
 /**
- * Builds the dreaming section from the host resolution, managed-cron status and
+ * Builds the dreaming section from the host resolution, the status of
+ * memory-core's one managed sweep cron (which every host phase shares) and
  * whatever the slot owner reported. Shared by the search and no-search paths so
  * a provider is consulted regardless of search availability.
  */
 export function composeDreamingPayload(
   base: DoctorMemoryDreamingConfigPayload & DreamingStoreStats,
-  cronStatuses: Record<"light" | "deep" | "rem", ManagedDreamingCronStatus>,
+  cronStatus: ManagedDreamingCronStatus,
   reported: MemoryPluginDreamingStatus | null,
 ): DoctorMemoryDreamingPayload {
   return {
@@ -150,17 +151,14 @@ export function composeDreamingPayload(
     ...(reported?.stats === undefined ? {} : { reportedStats: reported.stats }),
     phases: {
       light: applyReportedDreamingPhase(
-        { ...base.phases.light, ...cronStatuses.light },
+        { ...base.phases.light, ...cronStatus },
         reported?.phases?.light,
       ),
       deep: applyReportedDreamingPhase(
-        { ...base.phases.deep, ...cronStatuses.deep },
+        { ...base.phases.deep, ...cronStatus },
         reported?.phases?.deep,
       ),
-      rem: applyReportedDreamingPhase(
-        { ...base.phases.rem, ...cronStatuses.rem },
-        reported?.phases?.rem,
-      ),
+      rem: applyReportedDreamingPhase({ ...base.phases.rem, ...cronStatus }, reported?.phases?.rem),
     },
   };
 }

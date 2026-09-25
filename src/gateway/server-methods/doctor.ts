@@ -15,8 +15,6 @@ import {
 } from "../../agents/agent-scope.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import {
-  resolveMemoryDeepDreamingConfig,
-  resolveMemoryLightDreamingConfig,
   resolveMemoryDreamingPluginConfig,
   resolveMemoryDreamingConfig,
   resolveMemoryDreamingWorkspaces,
@@ -138,18 +136,7 @@ function resolveDreamingConfig(cfg: OpenClawConfig): DoctorMemoryDreamingConfigP
     pluginConfig: resolveMemoryDreamingPluginConfig(cfg),
     cfg,
   });
-  const light = resolveMemoryLightDreamingConfig({
-    pluginConfig: resolveMemoryDreamingPluginConfig(cfg),
-    cfg,
-  });
-  const deep = resolveMemoryDeepDreamingConfig({
-    pluginConfig: resolveMemoryDreamingPluginConfig(cfg),
-    cfg,
-  });
-  const rem = resolveMemoryRemDreamingConfig({
-    pluginConfig: resolveMemoryDreamingPluginConfig(cfg),
-    cfg,
-  });
+  const { light, deep, rem } = resolved.phases;
   return {
     enabled: resolved.enabled,
     ...(resolved.timezone ? { timezone: resolved.timezone } : {}),
@@ -161,14 +148,14 @@ function resolveDreamingConfig(cfg: OpenClawConfig): DoctorMemoryDreamingConfigP
     promotedEntries: [],
     phases: {
       light: {
-        enabled: light.enabled,
+        enabled: resolved.enabled && light.enabled,
         cron: light.cron,
         lookbackDays: light.lookbackDays,
         limit: light.limit,
         managedCronPresent: false,
       },
       deep: {
-        enabled: deep.enabled,
+        enabled: resolved.enabled && deep.enabled,
         cron: deep.cron,
         limit: deep.limit,
         minScore: deep.minScore,
@@ -179,7 +166,7 @@ function resolveDreamingConfig(cfg: OpenClawConfig): DoctorMemoryDreamingConfigP
         ...(typeof deep.maxAgeDays === "number" ? { maxAgeDays: deep.maxAgeDays } : {}),
       },
       rem: {
-        enabled: rem.enabled,
+        enabled: resolved.enabled && rem.enabled,
         cron: rem.cron,
         lookbackDays: rem.lookbackDays,
         limit: rem.limit,
@@ -372,12 +359,9 @@ type ManagedCronJobLike = {
   state?: { nextRunAtMs?: number };
 };
 
-function isManagedDreamingJob(
-  job: ManagedCronJobLike,
-  params: { name: string; tag: string; payloadText: string },
-): boolean {
+function isManagedDreamingJob(job: ManagedCronJobLike): boolean {
   const description = normalizeOptionalString(job.description);
-  if (description?.includes(params.tag)) {
+  if (description?.includes(MANAGED_DEEP_SLEEP_CRON_TAG)) {
     return true;
   }
   // Older managed jobs may lack the tag, so fall back to the exact system-event signature.
@@ -385,28 +369,23 @@ function isManagedDreamingJob(
   const payloadKind = normalizeOptionalString(job.payload?.kind)?.toLowerCase();
   const payloadText = normalizeOptionalString(job.payload?.text);
   return (
-    name === params.name && payloadKind === "systemevent" && payloadText === params.payloadText
+    name === MANAGED_DEEP_SLEEP_CRON_NAME &&
+    payloadKind === "systemevent" &&
+    payloadText === DEEP_SLEEP_SYSTEM_EVENT_TEXT
   );
 }
 
-async function resolveManagedDreamingCronStatus(params: {
-  context: {
-    cron?: { list?: (opts?: { includeDisabled?: boolean }) => Promise<unknown[]> };
-  };
-  match: {
-    name: string;
-    tag: string;
-    payloadText: string;
-  };
+async function resolveManagedDreamingCronStatus(context: {
+  cron?: { list?: (opts?: { includeDisabled?: boolean }) => Promise<unknown[]> };
 }): Promise<ManagedDreamingCronStatus> {
-  if (!params.context.cron || typeof params.context.cron.list !== "function") {
+  if (!context.cron || typeof context.cron.list !== "function") {
     return { managedCronPresent: false };
   }
   try {
-    const jobs = await params.context.cron.list({ includeDisabled: true });
+    const jobs = await context.cron.list({ includeDisabled: true });
     const managed = jobs
       .filter((job): job is ManagedCronJobLike => typeof job === "object" && job !== null)
-      .filter((job) => isManagedDreamingJob(job, params.match));
+      .filter(isManagedDreamingJob);
     let nextRunAtMs: number | undefined;
     for (const job of managed) {
       if (job.enabled !== true) {
@@ -427,24 +406,6 @@ async function resolveManagedDreamingCronStatus(params: {
   } catch {
     return { managedCronPresent: false };
   }
-}
-
-async function resolveAllManagedDreamingCronStatuses(context: {
-  cron?: { list?: (opts?: { includeDisabled?: boolean }) => Promise<unknown[]> };
-}): Promise<Record<"light" | "deep" | "rem", ManagedDreamingCronStatus>> {
-  const sweepStatus = await resolveManagedDreamingCronStatus({
-    context,
-    match: {
-      name: MANAGED_DEEP_SLEEP_CRON_NAME,
-      tag: MANAGED_DEEP_SLEEP_CRON_TAG,
-      payloadText: DEEP_SLEEP_SYSTEM_EVENT_TEXT,
-    },
-  });
-  return {
-    light: sweepStatus,
-    deep: sweepStatus,
-    rem: sweepStatus,
-  };
 }
 
 function shouldProbeMemoryEmbeddings(params: unknown): boolean {
@@ -578,7 +539,7 @@ export const createDoctorHandlers = (
           ? {
               dreaming: composeDreamingPayload(
                 { ...resolveDreamingConfig(cfg), ...EMPTY_DREAMING_STORE_STATS },
-                await resolveAllManagedDreamingCronStatuses(context),
+                await resolveManagedDreamingCronStatus(context),
                 reportedDreaming,
               ),
             }
@@ -628,7 +589,7 @@ export const createDoctorHandlers = (
               ),
             ),
       );
-      const cronStatuses = await resolveAllManagedDreamingCronStatuses(context);
+      const cronStatus = await resolveManagedDreamingCronStatus(context);
       const payload: DoctorMemoryStatusPayload = {
         agentId,
         provider: status.provider,
@@ -641,7 +602,7 @@ export const createDoctorHandlers = (
         })(),
         dreaming: composeDreamingPayload(
           { ...dreamingConfig, ...storeStats },
-          cronStatuses,
+          cronStatus,
           reportedDreaming,
         ),
       };
