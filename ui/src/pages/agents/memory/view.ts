@@ -348,6 +348,7 @@ function flattenDiaryBody(body: string): string[] {
 }
 
 function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
+  const promotedCount = props.reportedPromotedCount ?? props.promotedCount;
   return html`
     <section class="dreams ${idle ? "dreams--idle" : ""}">
       ${STARS.map(
@@ -399,8 +400,7 @@ function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
         <div class="dreams__status-detail">
           <div class="dreams__status-dot"></div>
           <span>
-            ${props.reportedPromotedCount ?? props.promotedCount}
-            ${t("dreaming.status.promotedSuffix")}
+            ${promotedCount} ${t("dreaming.status.promotedSuffix")}
             ${
               props.nextCycle
                 ? html`· ${t("dreaming.status.nextSweepPrefix")} ${props.nextCycle}`
