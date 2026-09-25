@@ -452,15 +452,19 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
     const dreamingOn = dreamingStatus?.enabled ?? configuredDreaming.enabled;
     // The toggle stays bound to the configuration it writes; a slot owner that
     // dreams on its own only lights the scene.
-    // Same rule as the Settings schedule: a report without a top-level `enabled`
-    // lights the scene only when a phase actually runs, so a counters-only
-    // report or one with every phase disabled reads as idle.
-    const reportedPhaseRunning = Object.values(dreamingStatus?.phases ?? {}).some(
+    // While a slot owner reports, the scene lights when the owner says it runs
+    // or when a phase actually runs — the same per-phase truth the Settings
+    // schedule and the next-sweep time below are built from. A counters-only
+    // report or one with every phase disabled reads as idle, and an owner that
+    // reports `enabled: false` cannot hide a host phase that is still scheduled
+    // and would show its next run beside "Idle".
+    const phaseRunning = Object.values(dreamingStatus?.phases ?? {}).some(
       (phase) => phase.enabled && phase.managedCronPresent,
     );
     const dreamingActive =
-      dreamingStatus?.reportedEnabled ??
-      (dreamingStatus?.reportedByProvider === true ? reportedPhaseRunning : dreamingOn);
+      dreamingStatus?.reportedByProvider === true
+        ? dreamingStatus.reportedEnabled === true || phaseRunning
+        : dreamingOn;
     // A slot owner that reports its own dreaming runs it itself. The toggle
     // writes the host setting, which such an owner does not follow and which
     // starts memory-core's own sweep beside it, so turning it on is locked.
@@ -550,7 +554,9 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
         selectedAgentId,
         shortTermCount: dreamingStatus?.shortTermCount ?? 0,
         promotedCount: dreamingStatus?.promotedToday ?? 0,
-        reportedPromotedCount: dreamingStatus?.reportedStats?.promotedToday,
+        scenePromotedCount: ownerDreams
+          ? (dreamingStatus?.reportedStats?.promotedToday ?? null)
+          : (dreamingStatus?.promotedToday ?? 0),
         ownerPluginId: ownerDreams ? configuredDreaming.pluginId : undefined,
         phases: dreamingStatus?.phases ?? undefined,
         shortTermEntries: dreamingStatus?.shortTermEntries ?? [],

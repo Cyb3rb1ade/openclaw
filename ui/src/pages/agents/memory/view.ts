@@ -102,10 +102,12 @@ type DreamingProps = {
   selectedAgentId: string;
   shortTermCount: number;
   promotedCount: number;
-  // Counter the memory slot owner reported for its own dreaming. The scene
-  // follows the owner; the Advanced tab keeps memory-core's figures, which
-  // belong to the entry lists and actions rendered there.
-  reportedPromotedCount?: number;
+  // The scene's promoted count. It follows whoever the scene shows as
+  // dreaming: the slot owner's reported count while one reports (null when it
+  // reports none, and the line is left out), memory-core's otherwise. The
+  // Advanced tab keeps memory-core's figures, which belong to the entry lists
+  // and actions rendered there.
+  scenePromotedCount?: number | null;
   ownerPluginId?: string;
   phases?: {
     light: DreamingPhaseInfo;
@@ -348,7 +350,15 @@ function flattenDiaryBody(body: string): string[] {
 }
 
 function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
-  const promotedCount = props.reportedPromotedCount ?? props.promotedCount;
+  const promotedCount =
+    props.scenePromotedCount === undefined ? props.promotedCount : props.scenePromotedCount;
+  const statusDetail = [
+    promotedCount === null ? null : `${promotedCount} ${t("dreaming.status.promotedSuffix")}`,
+    props.nextCycle ? `${t("dreaming.status.nextSweepPrefix")} ${props.nextCycle}` : null,
+    props.timezone,
+  ]
+    .filter((segment) => segment)
+    .join(" · ");
   return html`
     <section class="dreams ${idle ? "dreams--idle" : ""}">
       ${STARS.map(
@@ -399,15 +409,7 @@ function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
         >
         <div class="dreams__status-detail">
           <div class="dreams__status-dot"></div>
-          <span>
-            ${promotedCount} ${t("dreaming.status.promotedSuffix")}
-            ${
-              props.nextCycle
-                ? html`· ${t("dreaming.status.nextSweepPrefix")} ${props.nextCycle}`
-                : nothing
-            }
-            ${props.timezone ? html`· ${props.timezone}` : nothing}
-          </span>
+          <span>${statusDetail}</span>
         </div>
       </div>
 

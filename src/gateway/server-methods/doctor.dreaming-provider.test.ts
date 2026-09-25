@@ -39,6 +39,7 @@ describe("doctor.memory.status with a memory slot owner's dreaming provider", ()
       timezone: "Europe/Berlin",
       phases: {
         light: { enabled: true, scheduled: true, cron: "" },
+        deep: { enabled: false, scheduled: false },
         rem: { enabled: true, scheduled: true, cron: "15 1 * * *", nextRunAtMs: 1_000 },
       },
     });
@@ -60,6 +61,24 @@ describe("doctor.memory.status with a memory slot owner's dreaming provider", ()
     });
     expect(dreaming.phases.light).toMatchObject({ cron: "", managedCronPresent: true });
     expect(dreaming.shortTermCount).toBe(0);
+  });
+
+  it("keeps the host timezone while the slot owner reports only some phases", async () => {
+    // The one timezone labels every phase row; a provider that leaves a phase
+    // to the host must not relabel that phase's cron with its own zone.
+    getMemorySearchManager.mockResolvedValue({ manager: null, error: "memory search unavailable" });
+    resolveActiveMemoryDreamingStatus.mockResolvedValueOnce({
+      timezone: "Asia/Tokyo",
+      phases: { rem: { enabled: true, scheduled: true, cron: "15 1 * * *" } },
+    });
+    const respond = vi.fn();
+
+    await invokeDoctorMemory("doctor.memory.status", respond, { params: {} });
+
+    const dreaming = (respondPayload(respond) as Record<string, any>).dreaming;
+    expect(dreaming.reportedByProvider).toBe(true);
+    expect(dreaming.timezone).not.toBe("Asia/Tokyo");
+    expect(dreaming.phases.rem.cron).toBe("15 1 * * *");
   });
 
   it("keeps reported counters apart from memory-core's figures and entry lists", async () => {

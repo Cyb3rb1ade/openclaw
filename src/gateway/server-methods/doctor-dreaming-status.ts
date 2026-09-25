@@ -91,7 +91,9 @@ export type ManagedDreamingCronStatus = {
  * leaves out keeps the host-resolved value. Reported enablement lands in
  * `reportedEnabled`, never in `enabled`: the latter is the configuration the
  * page's toggle writes, and overriding it would show a switch that cannot
- * change what it displays.
+ * change what it displays. The one `timezone` labels every phase row, so a
+ * reported one is taken only when the provider reports all three phases;
+ * otherwise a host phase's cron would carry the provider's zone.
  */
 function applyReportedDreamingTop(
   reported: MemoryPluginDreamingStatus | null,
@@ -99,10 +101,16 @@ function applyReportedDreamingTop(
   if (!reported) {
     return {};
   }
+  const reportsEveryPhase =
+    reported.phases?.light !== undefined &&
+    reported.phases.deep !== undefined &&
+    reported.phases.rem !== undefined;
   return {
     reportedByProvider: true,
     ...(reported.enabled === undefined ? {} : { reportedEnabled: reported.enabled }),
-    ...(reported.timezone === undefined ? {} : { timezone: reported.timezone }),
+    ...(reported.timezone === undefined || !reportsEveryPhase
+      ? {}
+      : { timezone: reported.timezone }),
   };
 }
 

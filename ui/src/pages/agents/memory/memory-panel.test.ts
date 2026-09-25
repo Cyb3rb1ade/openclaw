@@ -693,6 +693,18 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     expect(renderOwnerReport({ reportedStats: { promotedToday: 3 } })).toMatch(/idle/i);
   });
 
+  it("keeps the scene lit while a host phase still runs beside an owner that reports off", () => {
+    // The next-sweep time below the label comes from that phase, so "Idle"
+    // next to a next run would contradict itself.
+    const label = renderOwnerReport({
+      reportedEnabled: false,
+      phases: {
+        light: { enabled: true, cron: "0 3 * * *", managedCronPresent: true, nextRunAtMs: 1 },
+      },
+    });
+    expect(label).toMatch(/active/i);
+  });
+
   it("keeps the scene idle when every reported phase is disabled", () => {
     const label = renderOwnerReport({
       phases: {
@@ -733,6 +745,20 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
     );
     expect(advanced?.textContent).toContain(
       "belong to memory-core; memory-lancedb-namespaced reports its own counters",
+    );
+
+    // An owner that reports no count leaves the scene without one instead of
+    // borrowing memory-core's.
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedEnabled: true,
+      shortTermCount: 1,
+      promotedToday: 2,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    page.viewState.activeSubTab = "scene";
+    render(page.render(), container);
+    expect(container.querySelector(".dreams__status-detail")?.textContent).not.toContain(
+      "promoted",
     );
 
     // Without an owner report the scene uses memory-core's count and the

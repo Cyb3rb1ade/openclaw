@@ -55,14 +55,26 @@ engine unchanged, and tries that engine again on the next logical turn.
   Any report at all arrives as `reportedByProvider: true`, which is what
   locks the page's switch against turning the host sweep on, so a provider
   may omit `enabled` and report only phases or counters without unlocking it.
-  Settings > Memory then schedules each reported phase by its own `enabled`
-  and `scheduled`, not by the host switch.
-  Without a reported `enabled`, the Dreams scene lights only while a reported
-  phase is enabled and scheduled, so a counters-only report reads as idle.
+  Settings > Memory then schedules each phase by its own `enabled` and
+  `scheduled`, not by the host switch or the reported top-level `enabled`,
+  so a reported `enabled: false` does not hide a host phase that is still
+  scheduled, and unreported host phases are not marked running.
+  The Dreams scene lights while the provider reports `enabled: true` or while
+  a phase is enabled and scheduled, so a counters-only report reads as idle.
+  A reported `timezone` labels every phase row and is therefore taken only
+  from a report that carries all three phases; otherwise the host timezone
+  stays with the host schedule.
+  The host copies only the documented fields of a valid report; extra keys
+  never reach the Control UI.
   Reported counters arrive as `reportedStats` beside `memory-core`'s own
   figures, not in their place: the scene and Settings > Memory show the
-  reported counters, while the Advanced tab keeps `memory-core`'s figures
-  with the entry lists and actions that belong to its store.
+  reported counters (and nothing, or n/a, for one the provider leaves out),
+  while the Advanced tab keeps `memory-core`'s figures with the entry lists
+  and actions that belong to its store.
+  A malformed report is dropped as a whole and logged, and the host keeps
+  `memory-core`'s resolution: anything that is not a plain object (arrays
+  included), a wrong field type, or a timestamp or counter that is not a
+  finite number (counters also non-negative).
   Reported `enabled` arrives as `reportedEnabled` and lights the scene; the
   page's toggle keeps showing the `memory-core` configuration it writes. While
   a provider reports, the toggle cannot turn that sweep on, which would

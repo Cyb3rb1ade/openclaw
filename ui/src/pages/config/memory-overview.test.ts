@@ -199,11 +199,29 @@ describe("renderMemoryOverview", () => {
     expect(phaseRows.some((row) => row.textContent?.includes("Disabled"))).toBe(false);
   });
 
+  it("keeps a still scheduled host phase enabled beside an owner that reports off", () => {
+    const payload = fixturePayload();
+    if (payload.dreaming) {
+      payload.dreaming.reportedByProvider = true;
+      payload.dreaming.reportedEnabled = false;
+      payload.dreaming.phases.rem.enabled = false;
+    }
+    const container = renderOverview({ kind: "ready", payload });
+    const row = (name: string) =>
+      [...container.querySelectorAll(".settings-row")].find((entry) =>
+        entry.textContent?.includes(name),
+      );
+
+    expect(row("Light phase")?.textContent).toContain("Enabled");
+    expect(row("Deep phase")?.textContent).toContain("Enabled");
+    expect(row("REM phase")?.textContent).toContain("Disabled");
+  });
+
   it("shows a slot owner's reported counters in place of memory-core's activity figures", () => {
     const payload = fixturePayload();
     if (payload.dreaming) {
       payload.dreaming.reportedEnabled = true;
-      payload.dreaming.reportedStats = { promotedToday: 8, promotedTotal: 90, shortTermCount: 17 };
+      payload.dreaming.reportedStats = { promotedToday: 8, promotedTotal: 90 };
     }
     const container = renderOverview({ kind: "ready", payload });
     const rowText = (label: string) =>
@@ -214,6 +232,14 @@ describe("renderMemoryOverview", () => {
     expect(rowText("Promoted today")).toContain("8");
     expect(rowText("Promoted total")).toContain("90");
     expect(rowText("Promoted total")).not.toContain("21");
+    // A counter the owner leaves out is not filled from memory-core's store.
+    expect(rowText("Pending short-term entries")).toContain("n/a");
+    expect(rowText("Pending short-term entries")).not.toContain("4");
+    // Phase signals stay memory-core's; the section says so while an owner reports.
+    expect(container.textContent).toContain("Phase signals and hits are memory-core's own store");
+    expect(renderOverview({ kind: "ready", payload: fixturePayload() }).textContent).not.toContain(
+      "memory-core's own store",
+    );
   });
 
   it("schedules a phases-only owner report by each phase's own flag", () => {

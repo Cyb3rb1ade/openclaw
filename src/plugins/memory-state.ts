@@ -11,6 +11,7 @@ import type {
   MemoryFlushPlan,
   MemoryPluginCapability,
   MemoryPluginCapabilityRegistration,
+  MemoryPluginDreamingPhaseStatus,
   MemoryPluginDreamingProvider,
   MemoryPluginDreamingStatus,
   MemoryPluginPublicArtifact,
@@ -451,6 +452,18 @@ export async function listActiveMemoryPublicArtifacts(params: {
   });
 }
 
+/**
+ * Reported timestamps and counters go straight into date formatting and page
+ * text, where `NaN`, `Infinity` or a negative count would render as garbage,
+ * so only finite numbers (non-negative for counters) pass.
+ */
+function isOptionalFiniteNumber(value: unknown, options: { min?: number } = {}): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  return typeof value === "number" && Number.isFinite(value) && value >= (options.min ?? -Infinity);
+}
+
 function isValidDreamingPhaseStatus(value: unknown): boolean {
   if (value === undefined) {
     return true;
@@ -463,9 +476,60 @@ function isValidDreamingPhaseStatus(value: unknown): boolean {
     (phase.enabled === undefined || typeof phase.enabled === "boolean") &&
     (phase.cron === undefined || typeof phase.cron === "string") &&
     (phase.scheduled === undefined || typeof phase.scheduled === "boolean") &&
-    (phase.lastRunAtMs === undefined || typeof phase.lastRunAtMs === "number") &&
-    (phase.nextRunAtMs === undefined || typeof phase.nextRunAtMs === "number")
+    isOptionalFiniteNumber(phase.lastRunAtMs) &&
+    isOptionalFiniteNumber(phase.nextRunAtMs)
   );
+}
+
+function copyDreamingPhase(
+  phase: MemoryPluginDreamingPhaseStatus | undefined,
+): MemoryPluginDreamingPhaseStatus | undefined {
+  if (phase === undefined) {
+    return undefined;
+  }
+  return {
+    ...(phase.enabled === undefined ? {} : { enabled: phase.enabled }),
+    ...(phase.cron === undefined ? {} : { cron: phase.cron }),
+    ...(phase.scheduled === undefined ? {} : { scheduled: phase.scheduled }),
+    ...(phase.lastRunAtMs === undefined ? {} : { lastRunAtMs: phase.lastRunAtMs }),
+    ...(phase.nextRunAtMs === undefined ? {} : { nextRunAtMs: phase.nextRunAtMs }),
+  };
+}
+
+/**
+ * Copies only the documented fields of a validated report. The provider's own
+ * object never reaches the RPC response: extra keys, getters and a `toJSON`
+ * would otherwise ship to the Control UI unchecked.
+ */
+function copyDreamingStatus(report: MemoryPluginDreamingStatus): MemoryPluginDreamingStatus {
+  const phases = report.phases;
+  const stats = report.stats;
+  const light = copyDreamingPhase(phases?.light);
+  const deep = copyDreamingPhase(phases?.deep);
+  const rem = copyDreamingPhase(phases?.rem);
+  return {
+    ...(report.enabled === undefined ? {} : { enabled: report.enabled }),
+    ...(report.timezone === undefined ? {} : { timezone: report.timezone }),
+    ...(phases === undefined
+      ? {}
+      : {
+          phases: {
+            ...(light === undefined ? {} : { light }),
+            ...(deep === undefined ? {} : { deep }),
+            ...(rem === undefined ? {} : { rem }),
+          },
+        }),
+    ...(stats === undefined
+      ? {}
+      : {
+          stats: {
+            ...(stats.shortTermCount === undefined ? {} : { shortTermCount: stats.shortTermCount }),
+            ...(stats.promotedTotal === undefined ? {} : { promotedTotal: stats.promotedTotal }),
+            ...(stats.promotedToday === undefined ? {} : { promotedToday: stats.promotedToday }),
+            ...(stats.lastPromotedAt === undefined ? {} : { lastPromotedAt: stats.lastPromotedAt }),
+          },
+        }),
+  };
 }
 
 const DREAMING_STATS_NUMBER_KEYS = ["shortTermCount", "promotedTotal", "promotedToday"] as const;
@@ -490,7 +554,7 @@ function isValidDreamingStatusTop(report: MemoryPluginDreamingStatus): boolean {
     return false;
   }
   for (const key of DREAMING_STATS_NUMBER_KEYS) {
-    if (stats[key] !== undefined && typeof stats[key] !== "number") {
+    if (!isOptionalFiniteNumber(stats[key], { min: 0 })) {
       return false;
     }
   }
@@ -513,39 +577,41 @@ export async function resolveActiveMemoryDreamingStatus(params: {
     return null;
   }
   const pluginId = capability?.pluginId;
-  let reported: MemoryPluginDreamingStatus | null | undefined;
+  // The checks read the provider's object, whose getters may throw like the
+  // call itself, so the whole inspection sits inside the guard.
   try {
-    reported = await provider.getStatus(params);
+    const reported = await provider.getStatus(params);
+    if (reported === undefined || reported === null) {
+      return null;
+    }
+    // Any report at all locks the page's host switch, so an array — which is
+    // `typeof "object"` too — must not count as one.
+    if (!asOptionalRecord(reported)) {
+      log.warn(`ignoring dreaming status from plugin "${pluginId}": not an object`);
+      return null;
+    }
+    const phases = reported.phases;
+    if (
+      phases !== undefined &&
+      (!asOptionalRecord(phases) ||
+        !isValidDreamingPhaseStatus(phases.light) ||
+        !isValidDreamingPhaseStatus(phases.deep) ||
+        !isValidDreamingPhaseStatus(phases.rem))
+    ) {
+      log.warn(`ignoring dreaming status from plugin "${pluginId}": malformed phases`);
+      return null;
+    }
+    if (!isValidDreamingStatusTop(reported)) {
+      log.warn(
+        `ignoring dreaming status from plugin "${pluginId}": malformed enablement, timezone or stats`,
+      );
+      return null;
+    }
+    return copyDreamingStatus(reported);
   } catch (err) {
     log.warn(`ignoring dreaming status from plugin "${pluginId}": ${String(err)}`);
     return null;
   }
-  if (reported === undefined || reported === null) {
-    return null;
-  }
-  if (typeof reported !== "object") {
-    log.warn(`ignoring dreaming status from plugin "${pluginId}": not an object`);
-    return null;
-  }
-  const phases = reported.phases;
-  if (
-    phases !== undefined &&
-    (typeof phases !== "object" ||
-      phases === null ||
-      !isValidDreamingPhaseStatus(phases.light) ||
-      !isValidDreamingPhaseStatus(phases.deep) ||
-      !isValidDreamingPhaseStatus(phases.rem))
-  ) {
-    log.warn(`ignoring dreaming status from plugin "${pluginId}": malformed phases`);
-    return null;
-  }
-  if (!isValidDreamingStatusTop(reported)) {
-    log.warn(
-      `ignoring dreaming status from plugin "${pluginId}": malformed enablement, timezone or stats`,
-    );
-    return null;
-  }
-  return reported;
 }
 
 export function clearMemoryPluginState(): void {

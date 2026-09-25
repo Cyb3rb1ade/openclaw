@@ -233,6 +233,67 @@ describe("memory plugin state", () => {
     ).resolves.toBeNull();
   });
 
+  it("copies only the documented fields of a report and survives throwing getters", async () => {
+    registerMemoryCapability("third-party-memory", {
+      dreaming: {
+        async getStatus() {
+          return {
+            enabled: true,
+            extra: "not a field",
+            phases: { rem: { enabled: true, junk: 1 }, bogus: { enabled: true } },
+            stats: {
+              promotedTotal: 3,
+              toJSON() {
+                return { promotedTotal: "hijacked", payload: "x".repeat(10) };
+              },
+            },
+          } as never;
+        },
+      },
+    });
+    const copied = await resolveActiveMemoryDreamingStatus({ cfg: {} as never, agentId: "main" });
+    expect(copied).toEqual({
+      enabled: true,
+      phases: { rem: { enabled: true } },
+      stats: { promotedTotal: 3 },
+    });
+    expect(JSON.stringify(copied)).not.toContain("hijacked");
+
+    clearMemoryPluginState();
+    registerMemoryCapability("third-party-memory", {
+      dreaming: {
+        async getStatus() {
+          return {
+            get phases(): never {
+              throw new Error("getter exploded");
+            },
+          } as never;
+        },
+      },
+    });
+    await expect(
+      resolveActiveMemoryDreamingStatus({ cfg: {} as never, agentId: "main" }),
+    ).resolves.toBeNull();
+  });
+
+  it("rejects array-shaped reports and phases instead of locking the host toggle", async () => {
+    // Arrays are `typeof "object"`; a provider returning `[]` or `{ phases: [] }`
+    // would otherwise reach the page as a report and lock its switch.
+    for (const report of [[], { phases: [] }, { phases: [{ rem: { enabled: true } }] }]) {
+      clearMemoryPluginState();
+      registerMemoryCapability("third-party-memory", {
+        dreaming: {
+          async getStatus() {
+            return report as never;
+          },
+        },
+      });
+      await expect(
+        resolveActiveMemoryDreamingStatus({ cfg: {} as never, agentId: "main" }),
+      ).resolves.toBeNull();
+    }
+  });
+
   it("rejects a report whose top-level fields have the wrong type", async () => {
     // `enabled: "true"` would reach the page as a string and slip past its
     // boolean-only owner lock, so the whole report is dropped.
@@ -242,6 +303,12 @@ describe("memory plugin state", () => {
       { stats: { promotedTotal: "3" } },
       { stats: { lastPromotedAt: 1 } },
       { stats: "none" },
+      // Finite, non-negative numbers only: these would render as garbage.
+      { stats: { shortTermCount: Number.NaN } },
+      { stats: { promotedToday: Number.POSITIVE_INFINITY } },
+      { stats: { promotedTotal: -1 } },
+      { phases: { rem: { lastRunAtMs: Number.NaN } } },
+      { phases: { light: { nextRunAtMs: Number.NEGATIVE_INFINITY } } },
     ]) {
       clearMemoryPluginState();
       registerMemoryCapability("third-party-memory", {
