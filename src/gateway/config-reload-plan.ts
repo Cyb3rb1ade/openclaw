@@ -230,13 +230,14 @@ const CORE_RELOAD_POLICIES: ReloadPolicy[] = [
     kind: "hot",
     actions: ["reconcileSystemJobs"],
   },
-  // Turning a third-party memory slot owner's dreaming off, denying
-  // memory-core or disabling plugins unloads the memory-core sidecar, which can
-  // then no longer remove its own cron jobs. Per-plugin enabled toggles are
-  // handled in buildGatewayReloadPlan.
+  // Turning a third-party memory slot owner's dreaming off, denying or not
+  // allowing memory-core or the owner, or disabling plugins unloads the
+  // memory-core sidecar, which can then no longer remove its own cron jobs.
+  // Per-plugin enabled toggles are handled in buildGatewayReloadPlan.
   {
     prefixes: [
       "plugins.enabled",
+      "plugins.allow",
       "plugins.deny",
       "plugins.slots.memory",
       "plugins.entries.*.config.dreaming",
@@ -249,7 +250,13 @@ const CORE_RELOAD_POLICIES: ReloadPolicy[] = [
     kind: "hot",
     actions: ["reloadPlugins"],
   },
-  { prefixes: ["plugins.load", "plugins.installs"], kind: "hot", actions: ["reloadPlugins"] },
+  // Removing a load path or install can drop the memory slot owner, which also
+  // unloads the memory-core sidecar; reconcile so its cron job goes with it.
+  {
+    prefixes: ["plugins.load", "plugins.installs"],
+    kind: "hot",
+    actions: ["reloadPlugins", "reconcileSystemJobs"],
+  },
   { prefixes: ["cron"], kind: "hot", actions: ["restartCron"] },
   { prefixes: ["transcripts", "cloudWorkers.profiles"], kind: "hot", actions: ["reloadPlugins"] },
   { prefixes: ["mcp", "gateway.publicOrigin"], kind: "hot", actions: ["disposeMcpRuntimes"] },

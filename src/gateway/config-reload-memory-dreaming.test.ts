@@ -6,12 +6,17 @@ import { SYSTEM_JOB_RECONCILERS } from "./server-cron-system-job-reconcilers.js"
 describe("memory dreaming reload plan", () => {
   it.each([
     "plugins.enabled",
+    "plugins.allow",
     "plugins.deny",
     "plugins.slots.memory",
     "plugins.entries.memory-core.enabled",
     // The slot owner itself: disabling it also makes the loader refuse the sidecar.
     "plugins.entries.memory-lancedb-namespaced.enabled",
     "plugins.entries.memory-lancedb-namespaced.config.dreaming.enabled",
+    // A slot owner supplied only through a load path or install disappears
+    // with it, and the loader then refuses the sidecar too.
+    "plugins.load.paths",
+    "plugins.installs.memory-lancedb-namespaced",
   ])("reloads plugins and reconciles system jobs when %s changes", (path) => {
     // Each of these can unload the memory-core sidecar; only the system-job
     // pass can remove its cron job afterwards.
