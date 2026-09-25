@@ -59,6 +59,10 @@ engine unchanged, and tries that engine again on the next logical turn.
   and `scheduled`, not by the host switch.
   Without a reported `enabled`, the Dreams scene lights only while a reported
   phase is enabled and scheduled, so a counters-only report reads as idle.
+  Reported counters arrive as `reportedStats` beside `memory-core`'s own
+  figures, not in their place: the scene and Settings > Memory show the
+  reported counters, while the Advanced tab keeps `memory-core`'s figures
+  with the entry lists and actions that belong to its store.
   Reported `enabled` arrives as `reportedEnabled` and lights the scene; the
   page's toggle keeps showing the `memory-core` configuration it writes. While
   a provider reports, the toggle cannot turn that sweep on, which would

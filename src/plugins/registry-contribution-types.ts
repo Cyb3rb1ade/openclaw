@@ -310,7 +310,11 @@ export type MemoryPluginDreamingStatus = {
     deep?: MemoryPluginDreamingPhaseStatus;
     rem?: MemoryPluginDreamingPhaseStatus;
   };
-  /** Consolidation counters; omitted counters keep the memory-core figures. */
+  /**
+   * Consolidation counters, returned as `reportedStats` beside memory-core's
+   * own figures rather than in their place, since those stay tied to the
+   * entry lists memory-core keeps.
+   */
   stats?: {
     shortTermCount?: number;
     promotedTotal?: number;

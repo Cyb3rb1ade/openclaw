@@ -690,7 +690,7 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
 
   it("keeps the scene idle for a counters-only owner report", () => {
     // Presence still locks the toggle, but nothing reports as running.
-    expect(renderOwnerReport({ promotedToday: 3 })).toMatch(/idle/i);
+    expect(renderOwnerReport({ reportedStats: { promotedToday: 3 } })).toMatch(/idle/i);
   });
 
   it("keeps the scene idle when every reported phase is disabled", () => {
@@ -702,6 +702,51 @@ describe("AgentMemoryPanel gateway lifecycle", () => {
       },
     });
     expect(label).toMatch(/idle/i);
+  });
+
+  it("shows the owner's promoted count on the scene and memory-core's in Advanced", () => {
+    const context = contextWithGateway({} as GatewayBrowserClient, true, {
+      plugins: {
+        slots: { memory: "memory-lancedb-namespaced" },
+        entries: { "memory-lancedb-namespaced": { config: { dreaming: { enabled: false } } } },
+      },
+    });
+    const page = document.createElement("openclaw-agent-memory-panel") as TestMemoryPanel;
+    page.context = context;
+    page.agentId = "main";
+    page.dreaming.dreamingStatus = {
+      enabled: false,
+      reportedEnabled: true,
+      reportedStats: { promotedToday: 4, shortTermCount: 9 },
+      shortTermCount: 1,
+      promotedToday: 2,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    const container = document.createElement("div");
+    render(page.render(), container);
+    expect(container.querySelector(".dreams__status-detail")?.textContent).toContain("4 promoted");
+
+    page.viewState.activeSubTab = "advanced";
+    render(page.render(), container);
+    const advanced = container.querySelector(".dreams-advanced");
+    expect(advanced?.querySelector(".dreams-advanced__summary")?.textContent).toContain(
+      "1 waiting · 2 promoted today",
+    );
+    expect(advanced?.textContent).toContain(
+      "belong to memory-core; memory-lancedb-namespaced reports its own counters",
+    );
+
+    // Without an owner report the scene uses memory-core's count and the
+    // Advanced description stays generic.
+    page.dreaming.dreamingStatus = {
+      enabled: true,
+      shortTermCount: 1,
+      promotedToday: 2,
+    } as NonNullable<DreamingState["dreamingStatus"]>;
+    render(page.render(), container);
+    expect(container.textContent).not.toContain("reports its own counters");
+    page.viewState.activeSubTab = "scene";
+    render(page.render(), container);
+    expect(container.querySelector(".dreams__status-detail")?.textContent).toContain("2 promoted");
   });
 
   it("keeps the toggle usable when the slot owner reports nothing", () => {

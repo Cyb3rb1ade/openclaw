@@ -204,10 +204,13 @@ function renderSchedule(dreaming: DreamingStatus) {
 }
 
 function renderActivity(dreaming: DreamingStatus) {
+  // A slot owner's reported counters describe the dreaming this section
+  // schedules; memory-core's own figures stay with its lists on the Dreams page.
+  const reported = dreaming.reportedStats;
   const rows = [
-    ["promotedToday", dreaming.promotedToday],
-    ["promotedTotal", dreaming.promotedTotal],
-    ["shortTermCount", dreaming.shortTermCount],
+    ["promotedToday", reported?.promotedToday ?? dreaming.promotedToday],
+    ["promotedTotal", reported?.promotedTotal ?? dreaming.promotedTotal],
+    ["shortTermCount", reported?.shortTermCount ?? dreaming.shortTermCount],
     ["phaseHitCount", dreaming.phaseSignalCount],
     ["lightPhaseHitCount", dreaming.lightPhaseHitCount],
     ["remPhaseHitCount", dreaming.remPhaseHitCount],

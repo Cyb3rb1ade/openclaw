@@ -550,6 +550,8 @@ class AgentMemoryPanel extends OpenClawLightDomElement {
         selectedAgentId,
         shortTermCount: dreamingStatus?.shortTermCount ?? 0,
         promotedCount: dreamingStatus?.promotedToday ?? 0,
+        reportedPromotedCount: dreamingStatus?.reportedStats?.promotedToday,
+        ownerPluginId: ownerDreams ? configuredDreaming.pluginId : undefined,
         phases: dreamingStatus?.phases ?? undefined,
         shortTermEntries: dreamingStatus?.shortTermEntries ?? [],
         promotedEntries: dreamingStatus?.promotedEntries ?? [],

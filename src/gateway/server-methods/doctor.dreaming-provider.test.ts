@@ -8,6 +8,8 @@ import {
   invokeDoctorMemory,
   respondPayload,
   makeDreamingStats,
+  makeDreamingEntry,
+  useMemoryManagerFixture,
 } from "./doctor.test-support.js";
 
 // Only the dreaming provider lookup is replaced; every other memory-state
@@ -58,6 +60,32 @@ describe("doctor.memory.status with a memory slot owner's dreaming provider", ()
     });
     expect(dreaming.phases.light).toMatchObject({ cron: "", managedCronPresent: true });
     expect(dreaming.shortTermCount).toBe(0);
+  });
+
+  it("keeps reported counters apart from memory-core's figures and entry lists", async () => {
+    useMemoryManagerFixture({ status: () => ({ provider: "gemini" }) });
+    const waiting = makeDreamingEntry("memory/2026-09-25.md", { snippet: "memory-core candidate" });
+    loadShortTermPromotionDreamingStats.mockImplementation(async () =>
+      makeDreamingStats({ shortTermCount: 1, promotedToday: 2, shortTermEntries: [waiting] }),
+    );
+    const stats = {
+      shortTermCount: 9,
+      promotedTotal: 40,
+      promotedToday: 4,
+      lastPromotedAt: "2026-09-25T06:00:00.000Z",
+    };
+    resolveActiveMemoryDreamingStatus.mockResolvedValueOnce({ enabled: true, stats });
+    const respond = vi.fn();
+
+    await invokeDoctorMemory("doctor.memory.status", respond, { params: {} });
+
+    const dreaming = (respondPayload(respond) as Record<string, any>).dreaming;
+    expect(dreaming.reportedStats).toEqual(stats);
+    // memory-core's count still describes memory-core's list.
+    expect(dreaming.shortTermCount).toBe(1);
+    expect(dreaming.promotedToday).toBe(2);
+    expect(dreaming.shortTermEntries).toMatchObject([{ path: "memory/2026-09-25.md" }]);
+    expect(dreaming.lastPromotedAt).toBeUndefined();
   });
 
   it("keeps the configuration toggle apart from the enablement a slot owner reports", async () => {

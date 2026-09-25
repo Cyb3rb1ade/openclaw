@@ -72,6 +72,13 @@ export type DoctorMemoryDreamingPayload = DoctorMemoryDreamingConfigPayload &
      * has to treat the sweep as owner-run and lock the host switch.
      */
     reportedByProvider?: boolean;
+    /**
+     * Consolidation counters the memory slot owner reported. Kept apart from
+     * memory-core's own figures above, which stay tied to the entry lists the
+     * Advanced tab renders and acts on; overlaying them would show one owner's
+     * count beside another owner's list.
+     */
+    reportedStats?: MemoryPluginDreamingStatus["stats"];
   };
 
 export type ManagedDreamingCronStatus = {
@@ -140,7 +147,7 @@ export function composeDreamingPayload(
   return {
     ...base,
     ...applyReportedDreamingTop(reported),
-    ...reported?.stats,
+    ...(reported?.stats === undefined ? {} : { reportedStats: reported.stats }),
     phases: {
       light: applyReportedDreamingPhase(
         { ...base.phases.light, ...cronStatuses.light },

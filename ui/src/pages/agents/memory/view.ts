@@ -102,6 +102,11 @@ type DreamingProps = {
   selectedAgentId: string;
   shortTermCount: number;
   promotedCount: number;
+  // Counter the memory slot owner reported for its own dreaming. The scene
+  // follows the owner; the Advanced tab keeps memory-core's figures, which
+  // belong to the entry lists and actions rendered there.
+  reportedPromotedCount?: number;
+  ownerPluginId?: string;
   phases?: {
     light: DreamingPhaseInfo;
     deep: DreamingPhaseInfo;
@@ -394,7 +399,8 @@ function renderScene(props: DreamingProps, idle: boolean, dreamText: string) {
         <div class="dreams__status-detail">
           <div class="dreams__status-dot"></div>
           <span>
-            ${props.promotedCount} ${t("dreaming.status.promotedSuffix")}
+            ${props.reportedPromotedCount ?? props.promotedCount}
+            ${t("dreaming.status.promotedSuffix")}
             ${
               props.nextCycle
                 ? html`· ${t("dreaming.status.nextSweepPrefix")} ${props.nextCycle}`
@@ -800,7 +806,9 @@ function renderAdvancedSection(props: DreamingProps) {
   const state = props.viewState;
   const groundedEntries = props.shortTermEntries.filter((entry) => entry.groundedCount > 0);
   const waitingEntries = sortWaitingEntries(props.shortTermEntries, state.advancedWaitingSort);
-  const description = t("dreaming.advanced.description");
+  const description = props.ownerPluginId
+    ? t("dreaming.advanced.descriptionOwner", { plugin: props.ownerPluginId })
+    : t("dreaming.advanced.description");
   const summary = [
     `${groundedEntries.length} ${t("dreaming.advanced.summaryFromDailyLog")}`,
     `${props.shortTermCount} ${t("dreaming.advanced.summaryWaiting")}`,

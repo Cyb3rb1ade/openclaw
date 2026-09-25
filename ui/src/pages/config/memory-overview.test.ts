@@ -199,6 +199,23 @@ describe("renderMemoryOverview", () => {
     expect(phaseRows.some((row) => row.textContent?.includes("Disabled"))).toBe(false);
   });
 
+  it("shows a slot owner's reported counters in place of memory-core's activity figures", () => {
+    const payload = fixturePayload();
+    if (payload.dreaming) {
+      payload.dreaming.reportedEnabled = true;
+      payload.dreaming.reportedStats = { promotedToday: 8, promotedTotal: 90, shortTermCount: 17 };
+    }
+    const container = renderOverview({ kind: "ready", payload });
+    const rowText = (label: string) =>
+      [...container.querySelectorAll(".settings-row")].find((row) =>
+        row.textContent?.includes(label),
+      )?.textContent;
+
+    expect(rowText("Promoted today")).toContain("8");
+    expect(rowText("Promoted total")).toContain("90");
+    expect(rowText("Promoted total")).not.toContain("21");
+  });
+
   it("schedules a phases-only owner report by each phase's own flag", () => {
     const payload = fixturePayload();
     if (payload.dreaming) {

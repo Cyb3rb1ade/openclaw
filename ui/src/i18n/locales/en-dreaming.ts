@@ -59,6 +59,8 @@ const enDreaming = {
       title: "Daily Log Review",
       description:
         "Review what came from the daily log, what is waiting for promotion, and what was promoted recently.",
+      descriptionOwner:
+        "Review memory-core's short-term store: what came from the daily log, what is waiting for promotion, and what it promoted recently. The figures, lists and actions here belong to memory-core; {plugin} reports its own counters on the Dreams tab.",
       summaryFromDailyLog: "from daily log",
       summaryWaiting: "waiting",
       summaryPromotedToday: "promoted today",
