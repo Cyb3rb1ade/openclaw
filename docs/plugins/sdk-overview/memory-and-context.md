@@ -68,7 +68,8 @@ engine unchanged, and tries that engine again on the next logical turn.
   never reach the Control UI.
   Reported counters arrive as `reportedStats` beside `memory-core`'s own
   figures, not in their place: the scene and Settings > Memory show the
-  reported counters (and nothing, or n/a, for one the provider leaves out),
+  reported counters (and nothing, or n/a, for any the provider leaves out —
+  all of them for a report without `stats`),
   while the Advanced tab keeps `memory-core`'s figures with the entry lists
   and actions that belong to its store.
   A malformed report is dropped as a whole and logged, and the host keeps

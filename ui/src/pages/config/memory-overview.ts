@@ -153,15 +153,22 @@ function phaseScheduleDescription(
   return details.join(" · ");
 }
 
+/**
+ * Whether the memory slot owner reports its own dreaming. Any report counts,
+ * including one without `enabled` or counters, the same rule the Memory page
+ * uses to lock its switch.
+ */
+function ownerReportsDreaming(dreaming: DreamingStatus): boolean {
+  return dreaming.reportedByProvider === true || typeof dreaming.reportedEnabled === "boolean";
+}
+
 function renderSchedule(dreaming: DreamingStatus) {
   // Without a provider the host switch gates every row as before. While a
   // slot owner reports, each row shows its phase's own `enabled` and
   // managed-cron flags instead: a reported `enabled: false` must not hide a
   // host phase that is still scheduled, and unreported host phases must not
   // read as running.
-  const ownerReports =
-    dreaming.reportedByProvider === true || typeof dreaming.reportedEnabled === "boolean";
-  const hostGate = ownerReports || dreaming.enabled;
+  const hostGate = ownerReportsDreaming(dreaming) || dreaming.enabled;
   const phases = [
     ["light", dreaming.phases.light],
     ["rem", dreaming.phases.rem],
@@ -208,13 +215,14 @@ function renderSchedule(dreaming: DreamingStatus) {
 
 function renderActivity(dreaming: DreamingStatus) {
   // A slot owner's reported counters describe the dreaming this section
-  // schedules, so while it reports, these three rows show its figures only —
-  // n/a for one it leaves out — instead of filling the gap with memory-core's
-  // count for a different store. memory-core's figures stay with its lists on
-  // the Dreams page.
+  // schedules, so while an owner reports at all — with or without counters —
+  // these three rows show its figures only, n/a for any it leaves out, instead
+  // of filling the gap with memory-core's count for a different store.
+  // memory-core's figures stay with its lists on the Dreams page.
+  const ownerReports = ownerReportsDreaming(dreaming);
   const reported = dreaming.reportedStats;
   const counter = (key: "promotedToday" | "promotedTotal" | "shortTermCount") =>
-    reported ? (reported[key] ?? t("common.na")) : dreaming[key];
+    ownerReports ? (reported?.[key] ?? t("common.na")) : dreaming[key];
   const rows = [
     ["promotedToday", counter("promotedToday")],
     ["promotedTotal", counter("promotedTotal")],
@@ -228,7 +236,7 @@ function renderActivity(dreaming: DreamingStatus) {
       title: t("memoryPage.overview.activity.title"),
       // Phase signals stay memory-core's own store diagnostics, so say which
       // rows are whose while a slot owner reports.
-      ...(reported ? { description: t("memoryPage.overview.activity.ownerReported") } : {}),
+      ...(ownerReports ? { description: t("memoryPage.overview.activity.ownerReported") } : {}),
     },
     rows.map(([label, value]) =>
       renderSettingsRow({
