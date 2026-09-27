@@ -2484,7 +2484,6 @@ const SPLIT_NODE_SHARDS = new Map<string, NodeTestSplitShard[] | (() => NodeTest
         configs: [
           "test/vitest/vitest.acp.config.ts",
           "test/vitest/vitest.shared-core.config.ts",
-          "test/vitest/vitest.tasks.config.ts",
           "test/vitest/vitest.utils.config.ts",
         ],
         requiresDist: false,
@@ -2709,6 +2708,11 @@ function resolveSplitNodeShards(name: string): NodeTestSplitShard[] | undefined 
 }
 
 export function nodeTestConfigRequiresCanonicalMetadata(config: string): boolean {
+  // Aggregate configs can be exclusive without owning canonical shard metadata.
+  // Check immutable project descriptors before discovering unrelated test files.
+  if (!canonicalNodeTestOwners.some((owner) => owner.projects.includes(config))) {
+    return false;
+  }
   const toolingOwner = canonicalNodeTestOwners.some(
     (owner) => owner.name === "core-tooling" && owner.projects.includes(config),
   );
