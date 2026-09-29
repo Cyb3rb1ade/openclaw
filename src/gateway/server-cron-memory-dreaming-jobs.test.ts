@@ -139,6 +139,17 @@ describe("when memory-core's dreaming jobs count as orphaned", () => {
       } as OpenClawConfig),
     ).toBe(false);
   });
+
+  it("never while no installed memory plugin owns the slot", async () => {
+    // "none" turns memory off (and is the Vitest default slot): nothing owns the
+    // slot beside memory-core, so the gateway must not open the cron store.
+    expect(await inventoried({ plugins: { slots: { memory: "none" } } } as OpenClawConfig)).toBe(
+      false,
+    );
+    expect(
+      await inventoried({ plugins: { slots: { memory: "not-installed" } } } as OpenClawConfig),
+    ).toBe(false);
+  });
 });
 
 describe("reconcileOrphanedMemoryDreamingJobs", () => {

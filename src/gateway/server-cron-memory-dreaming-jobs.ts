@@ -15,6 +15,7 @@ import { resolveAuthorizedDreamingSidecar } from "../plugins/loader-shared.js";
 import type { PluginManifestRegistry } from "../plugins/manifest-registry.js";
 import { getActivePluginRegistry } from "../plugins/runtime.js";
 import { getPluginRuntimeLoadContext } from "../plugins/runtime/load-context.js";
+import { hasKind } from "../plugins/slots.js";
 import type { GatewayCronServiceContract } from "./server-cron-contract.js";
 
 type MemoryDreamingJobCron = Pick<GatewayCronServiceContract, "list" | "remove">;
@@ -55,6 +56,12 @@ function isMemoryCoreDreamingOrphaned(
     return false;
   }
   if (!manifestRegistry) {
+    return false;
+  }
+  // "none" (memory off) or a plugin that is not installed: no slot owner sits
+  // beside memory-core, and the cron store stays closed.
+  const slotOwner = manifestRegistry.plugins.find((plugin) => plugin.id === normalizedSlot);
+  if (!slotOwner || !hasKind(slotOwner.kind, "memory")) {
     return false;
   }
   return (
