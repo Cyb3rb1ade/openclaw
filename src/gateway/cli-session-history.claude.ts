@@ -68,7 +68,11 @@ type ReseedImportState = {
 };
 
 export function decodeClaudeCliProjectEntry(line: string): ClaudeCliProjectEntry {
-  return JSON.parse(line) as ClaudeCliProjectEntry;
+  const entry: unknown = JSON.parse(line);
+  if (!isRecord(entry)) {
+    throw new Error("Claude history row must be an object");
+  }
+  return entry;
 }
 
 export function redactClaudeCliHistoryMessage(
@@ -123,10 +127,6 @@ export function resolveClaudeCliBindingSessionId(
   entry: SessionEntry | undefined,
 ): string | undefined {
   return getCliSessionBinding(entry, CLAUDE_CLI_PROVIDER)?.sessionId;
-}
-
-export function resolveClaudeCliTimestampMs(value: unknown): number | undefined {
-  return parseDateStringTimestampMs(value);
 }
 
 function resolveClaudeCliUsage(raw: ClaudeCliUsage) {
@@ -322,7 +322,7 @@ export function parseClaudeCliHistoryEntry(
     return null;
   }
 
-  const timestamp = resolveClaudeCliTimestampMs(entry.timestamp);
+  const timestamp = parseDateStringTimestampMs(entry.timestamp);
   const externalId = normalizeOptionalString(entry.uuid);
   const baseMeta = {
     id: externalId ?? `${CLAUDE_CLI_PROVIDER}:${cliSessionId}:line:${sourceLineNumber}`,
