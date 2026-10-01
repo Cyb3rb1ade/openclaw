@@ -41,8 +41,10 @@ function activeManifestRegistry(): PluginManifestRegistry | undefined {
  * sidecar, so memory-core is not loaded and its own disabled-branch cleanup can
  * never run. Admission is the loader's own decision (dreaming flag, plugins
  * disabled, memory-core denied or disabled, slot owner inactive), not the
- * dreaming flag alone. Without a manifest registry the answer is unknown, and
- * nothing is removed.
+ * dreaming flag alone. A slot pinned to a plugin that is no longer installed
+ * (its load path or install record removed) counts too: the loader does not
+ * fall back to memory-core for a pinned slot. Without a manifest registry the
+ * answer is unknown, and nothing is removed.
  */
 function isMemoryCoreDreamingOrphaned(
   cfg: OpenClawConfig,
@@ -52,16 +54,20 @@ function isMemoryCoreDreamingOrphaned(
   const memorySlot = normalized.slots.memory;
   const normalizedSlot = normalizeLowercaseStringOrEmpty(memorySlot);
   if (!normalizedSlot || normalizedSlot === DEFAULT_MEMORY_DREAMING_PLUGIN_ID) {
-    // memory-core owns the slot and reconciles its own jobs.
+    // memory-core owns the slot and reconciles its own jobs, or "none" turns
+    // memory off (the Vitest default slot): the cron store stays closed.
     return false;
   }
   if (!manifestRegistry) {
     return false;
   }
-  // "none" (memory off) or a plugin that is not installed: no slot owner sits
-  // beside memory-core, and the cron store stays closed.
   const slotOwner = manifestRegistry.plugins.find((plugin) => plugin.id === normalizedSlot);
-  if (!slotOwner || !hasKind(slotOwner.kind, "memory")) {
+  if (!slotOwner) {
+    // Pinned to a plugin that is not installed (anymore): nothing loads in the
+    // slot and memory-core is neither owner nor sidecar.
+    return true;
+  }
+  if (!hasKind(slotOwner.kind, "memory")) {
     return false;
   }
   return (

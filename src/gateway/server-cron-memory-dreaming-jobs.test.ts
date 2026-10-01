@@ -140,15 +140,37 @@ describe("when memory-core's dreaming jobs count as orphaned", () => {
     ).toBe(false);
   });
 
-  it("never while no installed memory plugin owns the slot", async () => {
-    // "none" turns memory off (and is the Vitest default slot): nothing owns the
-    // slot beside memory-core, so the gateway must not open the cron store.
+  it("never while memory is turned off", async () => {
+    // "none" turns memory off (and is the Vitest default slot): the gateway must
+    // not open the cron store.
     expect(await inventoried({ plugins: { slots: { memory: "none" } } } as OpenClawConfig)).toBe(
       false,
     );
+  });
+
+  it("once the pinned slot owner is no longer installed", async () => {
+    // Removing the owner's load path or install record leaves the slot pinned to
+    // a plugin the loader cannot find; it does not fall back to memory-core.
     expect(
       await inventoried({ plugins: { slots: { memory: "not-installed" } } } as OpenClawConfig),
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("never while a non-memory plugin is pinned to the slot", async () => {
+    const cron = fakeCron([managedPromotion]);
+    await reconcileOrphanedMemoryDreamingJobs({
+      cron: cron as never,
+      cfg: { plugins: { slots: { memory: "calendar" } } } as OpenClawConfig,
+      logger,
+      manifestRegistry: {
+        ...manifestRegistry,
+        plugins: [
+          ...manifestRegistry.plugins,
+          createPluginManifestRecordFixture({ id: "calendar" }),
+        ],
+      },
+    });
+    expect(cron.list).not.toHaveBeenCalled();
   });
 });
 
@@ -179,6 +201,25 @@ describe("reconcileOrphanedMemoryDreamingJobs", () => {
       "plugin-rem",
     ]);
     expect(cron.list).toHaveBeenCalledWith({ includeDisabled: true });
+  });
+
+  it("removes the canonical job once the slot owner's install is gone", async () => {
+    const cron = fakeCron([managedPromotion, pluginOwnJob]);
+
+    // Dreaming was on, so memory-core ran as sidecar and owned the job; then
+    // the owner's install record was removed and only memory-core's manifest is left.
+    const result = await reconcileOrphanedMemoryDreamingJobs({
+      cron: cron as never,
+      cfg: thirdPartyOwner(true),
+      logger,
+      manifestRegistry: {
+        ...manifestRegistry,
+        plugins: manifestRegistry.plugins.filter((plugin) => plugin.id === "memory-core"),
+      },
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect([...cron.store.keys()]).toEqual(["plugin-rem"]);
   });
 
   it("does not touch the job while memory-core runs as sidecar and owns it", async () => {
