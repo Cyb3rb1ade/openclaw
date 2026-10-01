@@ -186,7 +186,8 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
     publicExports: readPluginSdkSurfaceBudgetEnv(
       "OPENCLAW_PLUGIN_SDK_MAX_PUBLIC_EXPORTS",
       // +1: createChannelSecretContract consolidates seven channel secret contracts (approved by Peter, 2026-10-01).
-      3758,
+      // +3: type-only MemoryPluginDreaming{Provider,Status,PhaseStatus} for slot owners reporting dreaming status (#155860, pending Plugin SDK owner approval).
+      3761,
       env,
     ),
     publicFunctionExports: readPluginSdkSurfaceBudgetEnv(
