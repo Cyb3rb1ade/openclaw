@@ -66,6 +66,8 @@ export type ModelsProviderData = {
   refreshWarning?: string;
   runtimeChoicesByProvider?: Map<string, ModelsRuntimeChoice[]>;
   runtimeChoicesByModel?: Map<string, ModelsRuntimeChoice[]>;
+  /** Configured default runtime per provider/model where the route is known. */
+  modelRuntimeIds?: Map<string, string>;
   isCurrent?: () => boolean;
 };
 
@@ -481,6 +483,11 @@ export async function loadModelsProviderData(
     modelCatalog: dedupeModelCatalogEntries([...visibleCatalog, ...catalog]),
     runtimeChoicesByProvider,
     runtimeChoicesByModel,
+    modelRuntimeIds: new Map(
+      [...modelAvailability].flatMap(([key, readiness]) =>
+        readiness.runtimeId ? [[key, readiness.runtimeId] as const] : [],
+      ),
+    ),
     isCurrent: decisions.isCurrent,
   };
 }
