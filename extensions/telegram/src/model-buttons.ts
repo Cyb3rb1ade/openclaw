@@ -380,6 +380,20 @@ function truncateRuntimeVariantLabel(
   return `${prefix}${truncateModelLabel(modelLabel, Math.max(MIN_VARIANT_MODEL_LABEL_LENGTH, maxLen - prefix.length))}`;
 }
 
+/**
+ * Picker hint shown under the models header. Runtime-labelled rows pin the
+ * displayed runtime, so the plain "configured runtime" sentence only holds
+ * when no model in the list offers runtime rows.
+ */
+export function formatModelPickerRuntimeHint(
+  runtimeVariants?: ReadonlyMap<string, readonly ModelRuntimeVariant[]>,
+): string {
+  if (!runtimeVariants || runtimeVariants.size === 0) {
+    return "Selecting a model also applies its configured runtime.";
+  }
+  return "Rows labelled with a runtime select that runtime; other rows apply the model's configured runtime.";
+}
+
 export function getModelsPageSize(): number {
   return MODELS_PAGE_SIZE;
 }

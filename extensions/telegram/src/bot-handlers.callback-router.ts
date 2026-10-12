@@ -61,6 +61,7 @@ import {
   buildProviderKeyboard,
   calculateTotalPages,
   expandModelEntries,
+  formatModelPickerRuntimeHint,
   parseModelCallbackData,
   resolveModelListCallback,
   resolveModelRuntimeSelection,
@@ -513,7 +514,7 @@ export function createTelegramCallbackRouter({
             agentDir: resolveAgentDir(runtimeCfg, sessionState.agentId),
             sessionEntry: sessionState.sessionEntry,
             availability,
-          })}\nSelecting a model also applies its configured runtime.`;
+          })}\n${formatModelPickerRuntimeHint(runtimeVariants)}`;
           await retryModelAction(() =>
             showModelReply([modelData.refreshWarning, text].filter(Boolean).join("\n\n"), buttons),
           );
