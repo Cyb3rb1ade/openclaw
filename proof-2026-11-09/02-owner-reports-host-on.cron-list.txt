@@ -1,0 +1,55 @@
+# Sandbox gateway (PR head 5c7facacab3), loopback port 28795, token from sandbox config (not shown)
+# captured: 2026-11-09T09:15:31Z
+$ openclaw gateway call cron.list --params '{"includeDisabled":true}' --json
+{
+  "jobs": [
+    {
+      "id": "ca1cb4e1-67ca-4462-9963-a0ee3034690a",
+      "declarationKey": "memory-core:memory-dreaming-promotion",
+      "name": "Memory Dreaming Promotion",
+      "description": "[managed-by=memory-core.short-term-promotion] Promote weighted short-term recalls into MEMORY.md (limit=10, minScore=0.750, minRecallCount=3, minUniqueQueries=3, recencyHalfLifeDays=14, maxAgeDays=30).",
+      "enabled": true,
+      "createdAtMs": 1794215704203,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 3 * * *"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "__openclaw_memory_core_short_term_promotion_dream__",
+        "lightContext": true,
+        "toolsAllow": [
+          "*"
+        ]
+      },
+      "delivery": {
+        "mode": "none"
+      },
+      "scheduledToolPolicy": {
+        "version": 1,
+        "mode": "trusted"
+      },
+      "state": {
+        "nextRunAtMs": 1794276000000
+      },
+      "updatedAtMs": 1794215704203,
+      "configRevision": "sha256:5y5JiRAuO8pPfZY3wumiILX9uu3f2LL7fwdytOAX8zs",
+      "nextRunAtMs": 1794276000000,
+      "effectiveAgentId": "main"
+    }
+  ],
+  "snapshotRevision": "sha256:HK5J4hdg7ZbKBvBb0RascwCM5qss43fkDZrE-KEIO6I",
+  "total": 1,
+  "offset": 0,
+  "limit": 1,
+  "hasMore": false,
+  "nextOffset": null,
+  "deliveryPreviews": {
+    "ca1cb4e1-67ca-4462-9963-a0ee3034690a": {
+      "label": "not requested",
+      "detail": "not requested"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+# Sandbox gateway (PR head 5c7facacab3), loopback port 28795, token from sandbox config (not shown)
+# captured: 2026-11-09T09:18:50Z
+$ openclaw gateway call cron.list --params '{"includeDisabled":true}' --json
+{
+  "jobs": [],
+  "snapshotRevision": "sha256:47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU",
+  "total": 0,
+  "offset": 0,
+  "limit": 50,
+  "hasMore": false,
+  "nextOffset": null,
+  "deliveryPreviews": {}
+}

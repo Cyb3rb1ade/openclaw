@@ -1,0 +1,48 @@
+{
+  "gateway": {
+    "port": 28795,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "<REDACTED>"
+    },
+    "controlUi": {
+      "allowedOrigins": [
+        "http://127.0.0.1:28795",
+        "http://localhost:28795"
+      ]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "<SANDBOX>/.openclaw/workspace"
+    }
+  },
+  "plugins": {
+    "load": {
+      "paths": [
+        "<SANDBOX>/fixture-plugin"
+      ]
+    },
+    "slots": {
+      "memory": "acme-memory-fixture"
+    },
+    "entries": {
+      "acme-memory-fixture": {
+        "enabled": true,
+        "config": {
+          "runtimeMode": "search-runtime",
+          "scenarioFile": "<SANDBOX>/scenario.json",
+          "workspaceDir": "<SANDBOX>/.openclaw/workspace",
+          "dreaming": {
+            "enabled": false
+          }
+        }
+      },
+      "memory-core": {
+        "enabled": true
+      }
+    }
+  }
+}

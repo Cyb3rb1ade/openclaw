@@ -1,0 +1,16 @@
+# Sandbox gateway (PR head 5c7facacab3), loopback port 28795, token from sandbox config (not shown)
+# captured: 2026-11-09T09:18:56Z
+$ openclaw gateway call doctor.memory.status --params '{"agentId":"main"}' --json
+{
+  "agentId": "main",
+  "provider": "acme-memory-fixture",
+  "health": {
+    "status": "ready",
+    "message": "FIXTURE (fake data, PR #155860 proof): provider runtime health"
+  },
+  "embedding": {
+    "ok": false,
+    "checked": false,
+    "error": "memory embedding readiness not checked; run `openclaw memory status --deep` to check"
+  }
+}

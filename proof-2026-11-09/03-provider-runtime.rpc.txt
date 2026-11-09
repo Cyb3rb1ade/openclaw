@@ -1,0 +1,75 @@
+# Sandbox gateway (PR head 5c7facacab3), loopback port 28795, token from sandbox config (not shown)
+# captured: 2026-11-09T09:17:45Z
+$ openclaw gateway call doctor.memory.status --params '{"agentId":"main"}' --json
+{
+  "agentId": "main",
+  "provider": "acme-memory-fixture",
+  "health": {
+    "status": "ready",
+    "message": "FIXTURE (fake data, PR #155860 proof): provider runtime health"
+  },
+  "embedding": {
+    "ok": false,
+    "checked": false,
+    "error": "memory embedding readiness not checked; run `openclaw memory status --deep` to check"
+  },
+  "dreaming": {
+    "enabled": false,
+    "verboseLogging": false,
+    "storageMode": "separate",
+    "separateReports": false,
+    "phases": {
+      "light": {
+        "enabled": true,
+        "cron": "",
+        "lookbackDays": 2,
+        "limit": 100,
+        "managedCronPresent": true,
+        "lastRunAtMs": 1794213354153
+      },
+      "deep": {
+        "enabled": true,
+        "cron": "0 4 * * *",
+        "limit": 10,
+        "minScore": 0.75,
+        "minRecallCount": 3,
+        "minUniqueQueries": 3,
+        "recencyHalfLifeDays": 14,
+        "managedCronPresent": true,
+        "maxAgeDays": 30,
+        "nextRunAtMs": 1794279600000
+      },
+      "rem": {
+        "enabled": true,
+        "cron": "15 1 * * *",
+        "lookbackDays": 7,
+        "limit": 10,
+        "minPatternStrength": 0.75,
+        "managedCronPresent": true,
+        "nextRunAtMs": 1794269700000
+      }
+    },
+    "shortTermCount": 0,
+    "recallSignalCount": 0,
+    "dailySignalCount": 0,
+    "groundedSignalCount": 0,
+    "totalSignalCount": 0,
+    "phaseSignalCount": 0,
+    "lightPhaseHitCount": 0,
+    "remPhaseHitCount": 0,
+    "promotedTotal": 0,
+    "promotedToday": 0,
+    "shortTermEntries": [],
+    "signalEntries": [],
+    "promotedEntries": [],
+    "reportedByProvider": true,
+    "reportedEnabled": true,
+    "timezone": "Europe/Berlin",
+    "reportedStats": {
+      "shortTermCount": 9,
+      "promotedTotal": 139,
+      "promotedToday": 4,
+      "lastPromotedAt": "2026-11-09T03:07:00.000Z"
+    }
+  }
+}

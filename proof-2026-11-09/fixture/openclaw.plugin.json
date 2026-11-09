@@ -1,0 +1,17 @@
+{
+  "id": "acme-memory-fixture",
+  "name": "ACME Memory (PR #155860 proof fixture)",
+  "description": "FIXTURE ONLY. Holds the memory slot and reports fake, labelled dreaming status through the dreaming.getStatus seam from openclaw/openclaw#155860.",
+  "version": "0.0.1-fixture",
+  "kind": "memory",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "runtimeMode": { "type": "string", "enum": ["search-runtime", "provider-runtime"] },
+      "scenarioFile": { "type": "string" },
+      "workspaceDir": { "type": "string" },
+      "dreaming": { "type": "object", "additionalProperties": true }
+    }
+  }
+}

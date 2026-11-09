@@ -1,0 +1,2 @@
+2026-11-09T10:21:05.615+01:00 [plugins/memory-state] ignoring dreaming status from plugin "acme-memory-fixture": Error: fixture: simulated provider failure
+2026-11-09T10:19:09.607+01:00 [plugins/memory-state] ignoring dreaming status from plugin "acme-memory-fixture": Error: fixture: simulated provider failure
